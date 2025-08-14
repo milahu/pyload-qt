@@ -252,7 +252,7 @@ class PyLoadUI(QMainWindow):
         # Queue table
         self.queue_table = QTableWidget()
         self.queue_table.setColumnCount(3)
-        self.queue_table.setHorizontalHeaderLabels(["Pos", "Name", "Progress", "Size"])
+        self.queue_table.setHorizontalHeaderLabels(["Pos", "Package name", "Progress", "Size"])
         self.queue_table.horizontalHeader().setSectionResizeMode(1, QHeaderView.Stretch)
         self.queue_table.setSelectionBehavior(QTableWidget.SelectRows)
         self.queue_table.setSelectionMode(QTableWidget.SingleSelection)
@@ -264,7 +264,7 @@ class PyLoadUI(QMainWindow):
         # Package contents table
         self.contents_table = QTableWidget()
         self.contents_table.setColumnCount(3)
-        self.contents_table.setHorizontalHeaderLabels(["Filename", "Status", "Error"])
+        self.contents_table.setHorizontalHeaderLabels(["File name", "Status", "Error"])
         self.contents_table.horizontalHeader().setSectionResizeMode(
             0, QHeaderView.Stretch
         )
