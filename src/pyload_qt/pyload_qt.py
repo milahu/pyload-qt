@@ -20,6 +20,7 @@ from PySide6.QtWidgets import (
     QSplitter,
     QHeaderView,
     QMessageBox,
+    QDialog,
 )
 from PySide6.QtCore import Qt, QUrl
 from PySide6.QtNetwork import QNetworkAccessManager, QNetworkRequest, QNetworkReply
@@ -116,6 +117,46 @@ class PyLoadClient:
         reply.finished.connect(handle_reply)
 
 
+class AddPackageDialog(QDialog):
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self.setWindowTitle("Add Package")
+        self.setModal(True)
+        self.init_ui()
+
+    def init_ui(self):
+        layout = QVBoxLayout(self)
+
+        # Package name
+        name_layout = QHBoxLayout()
+        name_layout.addWidget(QLabel("Package Name:"))
+        self.package_name_input = QLineEdit()
+        name_layout.addWidget(self.package_name_input)
+        layout.addLayout(name_layout)
+
+        # Links input
+        layout.addWidget(QLabel("Links (one per line or space separated):"))
+        self.links_input = QTextEdit()
+        layout.addWidget(self.links_input)
+
+        # Buttons
+        button_layout = QHBoxLayout()
+        self.add_button = QPushButton("Add Package")
+        self.add_button.clicked.connect(self.accept)
+        self.cancel_button = QPushButton("Cancel")
+        self.cancel_button.clicked.connect(self.reject)
+        button_layout.addWidget(self.add_button)
+        button_layout.addWidget(self.cancel_button)
+        layout.addLayout(button_layout)
+
+    def get_package_data(self):
+        name = self.package_name_input.text().strip()
+        links_text = self.links_input.toPlainText().strip()
+        url_pattern = re.compile(r'https?://[^\s<>"]+|www\.[^\s<>"]+')
+        links = url_pattern.findall(links_text)
+        return name, links
+
+
 class PyLoadUI(QMainWindow):
     def __init__(self):
         super().__init__()
@@ -159,39 +200,39 @@ class PyLoadUI(QMainWindow):
         splitter.addWidget(self.contents_table)
         splitter.setSizes([300, 200])
 
-        # Add package controls
-        add_package_group = QWidget()
-        add_package_layout = QVBoxLayout(add_package_group)
-
-        # Package name
-        name_layout = QHBoxLayout()
-        name_layout.addWidget(QLabel("Package Name:"))
-        self.package_name_input = QLineEdit()
-        name_layout.addWidget(self.package_name_input)
-        add_package_layout.addLayout(name_layout)
-
-        # Links input
-        add_package_layout.addWidget(QLabel("Links (one per line or space separated):"))
-        self.links_input = QTextEdit()
-        add_package_layout.addWidget(self.links_input)
-
-        # Add button
-        add_button = QPushButton("Add Package")
-        add_button.clicked.connect(self.add_package)
-        add_package_layout.addWidget(add_button)
-
         # Add widgets to main layout
         main_layout.addWidget(splitter)
-        main_layout.addWidget(add_package_group)
 
     def create_menu(self):
         self.menu = self.menuBar()
 
         file_menu = self.menu.addMenu("&File") # shortcut: Alt+F
 
+        add_package_action = file_menu.addAction("Add Package")
+        add_package_action.triggered.connect(self.show_add_package_dialog)
+        add_package_action.setShortcut(QKeySequence.Open) # shortcut: Ctrl+O
+
+        """
+        refresh_action = file_menu.addAction("Refresh")
+        refresh_action.triggered.connect(self.refresh_queue)
+        """
+
         quit_action = file_menu.addAction("Quit")
         quit_action.triggered.connect(self.close)
         quit_action.setShortcut(QKeySequence.Quit) # shortcut: Ctrl+Q
+
+    def show_add_package_dialog(self):
+        dialog = AddPackageDialog(self)
+        if dialog.exec() == QDialog.Accepted:
+            name, links = dialog.get_package_data()
+            if not name:
+                QMessageBox.warning(self, "Error", "Package name cannot be empty")
+                return
+            if not links:
+                QMessageBox.warning(self, "Error", "No valid links found")
+                return
+
+            self.client.add_package(name, links, self.on_package_added)
 
     def login(self):
         self.client.login("pyload", "pyload", self.on_login_result)

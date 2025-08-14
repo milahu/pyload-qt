@@ -69,3 +69,7 @@ send a GET request to
 http://localhost:8000/api/addPackage?name={name}&links={links}
 the values are json-formatted strings like
 http://pyload-core/api/addPackage?name="some_name"&links=["link1","link2"]
+
+---
+
+move the "add package" widget to a separate popup window, which can be opened by menubar -> file -> add package
