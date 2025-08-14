@@ -5,6 +5,7 @@ import sys
 import signal
 import json
 import re
+import subprocess
 from PySide6.QtWidgets import (
     QApplication,
     QMainWindow,
@@ -42,8 +43,34 @@ class PyLoadClient:
         self.base_url = "http://localhost:8000/api" # ipv4: login fails with NetworkError.ConnectionRefusedError
         self.base_url = "http://127.0.0.1:8000/api" # ipv4: login fails with NetworkError.ConnectionRefusedError
         self.base_url = "http://[::1]:8000/api" # ipv6
+        self.is_localhost = True
         self.session_cookie = None
         self.func_cache = {}
+        self.config_path = None
+        self.config = {}
+        if self.is_localhost:
+            # FIXME this is the default config path, it can be different
+            self.config_path = "~/.pyload/settings/pyload.cfg"
+            self.parse_config()
+
+    def parse_config(self):
+        with open(os.path.expanduser(self.config_path)) as f:
+            group = None
+            for line in f.readlines():
+                line = line.rstrip()
+                # print(f"line {line!r}")
+                if line.startswith("version:"): continue
+                elif line == "": continue
+                elif line[0] == "\t":
+                    m = re.fullmatch(r'\t([0-9a-zA-Z_;]+) ([0-9a-zA-Z_]+) : "[^"]+" = ?(.*)', line)
+                    _type, key, val = m.groups()
+                    if _type == "bool": val = True if val == "True" else False
+                    elif _type == "int": val = int(val)
+                    group[key] = val
+                else:
+                    m = re.fullmatch(r'([0-9a-zA-Z_]+) - "[^"]+":', line)
+                    key = m.group(1)
+                    group = self.config[key] = dict()
 
     # https://stackoverflow.com/questions/13194180/dynamic-method-generation-in-python
     def __getattr__(self, name):
@@ -275,6 +302,7 @@ class PyLoadUI(QMainWindow):
         self.queue_table.setSelectionBehavior(QTableWidget.SelectRows)
         self.queue_table.setSelectionMode(QTableWidget.SingleSelection)
         self.queue_table.itemSelectionChanged.connect(self.on_package_selected)
+        self.queue_table.itemDoubleClicked.connect(self.on_package_doubleclicked)
         self.queue_table.setSortingEnabled(True)
         self.queue_table.verticalHeader().setVisible(False)
         self.queue_table.horizontalHeaderItem(0).setToolTip("Position")
@@ -528,6 +556,30 @@ class PyLoadUI(QMainWindow):
         # Get package ID from the first column of selected row
         pid = self.queue_table.item(selected_items[0].row(), 0).data(Qt.UserRole)
         self.client.get_package_data(pid, self.on_package_data_received)
+
+    def on_package_doubleclicked(self):
+        selected_items = self.queue_table.selectedItems()
+        if not selected_items:
+            return
+        if not self.client.is_localhost: return
+
+        storage_folder = self.client.config["general"]["storage_folder"]
+
+        def on_package_data_received(package_data):
+            # print(f"on_package_doubleclicked package_data {package_data}")
+            folder_path = os.path.join(storage_folder, package_data["folder"])
+            if not os.path.exists(folder_path):
+                print(f"missing folder_path {folder_path!r}")
+                return
+            args = [
+                "xdg-open",
+                folder_path,
+            ]
+            subprocess.Popen(args)
+
+        pid = self.queue_table.item(selected_items[0].row(), 0).data(Qt.UserRole)
+        self.client.get_package_data(pid, on_package_data_received)
+
 
     def on_package_data_received(self, package_data):
         if package_data is None:
