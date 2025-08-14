@@ -24,6 +24,7 @@ from PySide6.QtWidgets import (
 from PySide6.QtCore import Qt, QUrl
 from PySide6.QtNetwork import QNetworkAccessManager, QNetworkRequest, QNetworkReply
 from PySide6.QtGui import QIcon, QScreen
+from PySide6.QtGui import QAction, QKeySequence
 
 
 class PyLoadClient:
@@ -133,6 +134,8 @@ class PyLoadUI(QMainWindow):
         self.setCentralWidget(main_widget)
         main_layout = QVBoxLayout(main_widget)
 
+        self.create_menu()
+
         # Queue table
         self.queue_table = QTableWidget()
         self.queue_table.setColumnCount(3)
@@ -180,6 +183,15 @@ class PyLoadUI(QMainWindow):
         # Add widgets to main layout
         main_layout.addWidget(splitter)
         main_layout.addWidget(add_package_group)
+
+    def create_menu(self):
+        self.menu = self.menuBar()
+
+        file_menu = self.menu.addMenu("&File") # shortcut: Alt+F
+
+        quit_action = file_menu.addAction("Quit")
+        quit_action.triggered.connect(self.close)
+        quit_action.setShortcut(QKeySequence.Quit) # shortcut: Ctrl+Q
 
     def login(self):
         self.client.login("pyload", "pyload", self.on_login_result)
