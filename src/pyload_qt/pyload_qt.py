@@ -277,7 +277,7 @@ class PyLoadUI(QMainWindow):
         self.login()
 
     def init_ui(self):
-        self.setWindowTitle("PyLoad Client")
+        self.setWindowTitle("pyLoad")
         self.setGeometry(100, 100, 800, 600)
         self.setWindowIcon(QIcon(os.path.dirname(__file__) + "/pyload-logo.png"))
 
