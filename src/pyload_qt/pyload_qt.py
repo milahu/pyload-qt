@@ -21,6 +21,7 @@ from PySide6.QtWidgets import (
     QHeaderView,
     QMessageBox,
     QDialog,
+    QMenu,
 )
 from PySide6.QtCore import Qt, QUrl
 from PySide6.QtNetwork import QNetworkAccessManager, QNetworkRequest, QNetworkReply
@@ -118,6 +119,29 @@ class PyLoadClient:
 
         reply.finished.connect(handle_reply)
 
+    def delete_files(self, fids, callback):
+        if not fids:
+            callback(False)
+            return
+        encoded_fids = json.dumps(fids, separators=(",", ":"))
+        url = f"{self.base_url}/delete_files?file_ids={encoded_fids}"
+        request = QNetworkRequest(QUrl(url))
+        if self.session_cookie:
+            request.setRawHeader(b"Cookie", self.session_cookie.encode())
+
+        reply = self.manager.get(request)
+
+        def handle_reply():
+            if reply.error() == QNetworkReply.NoError:
+                callback(True)
+            else:
+                # TODO also print response body with the server exception
+                print("delete_files reply.error", reply.error())
+                callback(False)
+            reply.deleteLater()
+
+        reply.finished.connect(handle_reply)
+
 
 class AddPackageDialog(QDialog):
     def __init__(self, parent=None):
@@ -195,6 +219,10 @@ class PyLoadUI(QMainWindow):
         self.contents_table.horizontalHeader().setSectionResizeMode(
             0, QHeaderView.Stretch
         )
+        self.contents_table.setSelectionBehavior(QTableWidget.SelectRows)
+        self.contents_table.setSelectionMode(QTableWidget.ExtendedSelection)
+        self.contents_table.setContextMenuPolicy(Qt.CustomContextMenu)
+        self.contents_table.customContextMenuRequested.connect(self.show_contents_context_menu)
 
         # Splitter for tables
         splitter = QSplitter(Qt.Vertical)
@@ -222,6 +250,58 @@ class PyLoadUI(QMainWindow):
         quit_action = file_menu.addAction("Quit")
         quit_action.triggered.connect(self.close)
         quit_action.setShortcut(QKeySequence.Quit) # shortcut: Ctrl+Q
+
+    def show_contents_context_menu(self, position):
+        selected_rows = set(index.row() for index in self.contents_table.selectedIndexes())
+        if not selected_rows:
+            return
+
+        menu = QMenu()
+        remove_action = menu.addAction("Remove Links")
+        action = menu.exec(self.contents_table.viewport().mapToGlobal(position))
+
+        if action == remove_action:
+            self.remove_selected_links()
+
+    def remove_selected_links(self):
+        selected_rows = set(index.row() for index in self.contents_table.selectedIndexes())
+        if not selected_rows:
+            return
+
+        if not self.current_package or "links" not in self.current_package:
+            return
+
+        # Get the fids of selected links
+        fids = []
+        for row in selected_rows:
+            if row < len(self.current_package["links"]):
+                link = self.current_package["links"][row]
+                fids.append(link["fid"])
+
+        if not fids:
+            return
+
+        # Confirm deletion
+        reply = QMessageBox.question(
+            self,
+            "Confirm Removal",
+            f"Are you sure you want to remove {len(fids)} link(s)?",
+            QMessageBox.Yes | QMessageBox.No,
+            QMessageBox.No
+        )
+
+        if reply == QMessageBox.Yes:
+            self.client.delete_files(fids, self.on_files_deleted)
+
+    def on_files_deleted(self, success):
+        if success:
+            # QMessageBox.information(self, "Success", "Links removed successfully")
+            # Refresh the package data to show changes
+            if self.current_package:
+                pid = self.current_package["pid"]
+                self.client.get_package_data(pid, self.on_package_data_received)
+        else:
+            QMessageBox.warning(self, "Error", "Failed to remove links")
 
     def show_add_package_dialog(self):
         dialog = AddPackageDialog(self)

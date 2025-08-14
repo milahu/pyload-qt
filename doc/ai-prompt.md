@@ -73,3 +73,12 @@ http://pyload-core/api/addPackage?name="some_name"&links=["link1","link2"]
 ---
 
 move the "add package" widget to a separate popup window, which can be opened by menubar -> file -> add package
+
+---
+
+in the "Package contents table"
+when i select one or more rows and right-click,
+show a context menu with a "remove links" item,
+which causes an API request to
+http://localhost:8000/api/deleteFiles?[1,2,3]
+to remove the links 1, 2, 3
