@@ -38,6 +38,46 @@ class PyLoadClient:
         self.base_url = "http://127.0.0.1:8000/api" # ipv4: login fails with NetworkError.ConnectionRefusedError
         self.base_url = "http://[::1]:8000/api" # ipv6
         self.session_cookie = None
+        self.func_cache = {}
+
+    # https://stackoverflow.com/questions/13194180/dynamic-method-generation-in-python
+    def __getattr__(self, name):
+        print(f"getattr {name}")
+        try:
+            return self.func_cache[name]
+        except KeyError:
+            pass
+        print(f"creating function {name}")
+        # def func(self, *args, **kwargs, callback): # ?
+        # def func(self, *args, callback=None, **kwargs): # ?
+        # def func(*args, callback=None, **kwargs): # ?
+        # def func(self, callback, *args, **kwargs):
+        def func(callback, *args, **kwargs):
+            url = f"{self.base_url}/{name}"
+            if args:
+                url += "/" + ",".join(map(str, args))
+            if kwargs:
+                kwargs_json = dict()
+                for key, val in kwargs.items():
+                    kwargs_json[key] = json.dumps(val, separators=(",", ":"))
+                url += "?" + urllib.parse.urlencode(kwargs_json)
+            request = QNetworkRequest(QUrl(url))
+            if self.session_cookie:
+                request.setRawHeader(b"Cookie", self.session_cookie.encode())
+            reply = self.manager.get(request)
+            def handle_reply():
+                if reply.error() == QNetworkReply.NoError:
+                    data = json.loads(reply.readAll().data().decode())
+                    if callback: callback(data)
+                else:
+                    # TODO also print response body with the server exception
+                    print(f"{name} reply.error", reply.error())
+                    if callback: callback(None)
+                reply.deleteLater()
+            reply.finished.connect(handle_reply)
+        func.__name__ = name
+        self.func_cache[name] = func
+        return func
 
     def login(self, username, password, callback):
         url = f"{self.base_url}/login"
