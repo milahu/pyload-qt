@@ -260,6 +260,7 @@ class PyLoadUI(QMainWindow):
         self.queue_table.setSortingEnabled(True)
         self.queue_table.verticalHeader().setVisible(False)
         self.queue_table.horizontalHeaderItem(0).setToolTip("Position")
+        self.queue_table.sortItems(0, Qt.AscendingOrder)
 
         # Package contents table
         self.contents_table = QTableWidget()
@@ -500,10 +501,6 @@ class PyLoadUI(QMainWindow):
             size_item = SortKeyTableWidgetItem(size_text, size)
             self.queue_table.setItem(row, col, size_item)
             col += 1
-
-        # FIXME this should not be necessary
-        # because we insert the items in order
-        self.queue_table.sortItems(0, Qt.AscendingOrder)
 
     def on_package_selected(self):
         selected_items = self.queue_table.selectedItems()
