@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 
 import sys
+import signal
 import json
 import re
 from PySide6.QtWidgets import (
@@ -273,6 +274,7 @@ class PyLoadUI(QMainWindow):
             QMessageBox.warning(self, "Error", "Failed to add package")
 
 if __name__ == "__main__":
+    signal.signal(signal.SIGINT, signal.SIG_DFL)
     app = QApplication(sys.argv)
     window = PyLoadUI()
     window.show()
