@@ -263,8 +263,13 @@ class PyLoadUI(QMainWindow):
 
         # Queue table
         self.queue_table = QTableWidget()
-        self.queue_table.setColumnCount(3)
-        self.queue_table.setHorizontalHeaderLabels(["Pos", "Package name", "Progress", "Size"])
+        self.queue_table.setColumnCount(4)
+        self.queue_table.setHorizontalHeaderLabels([
+            "Pos",
+            "Package name",
+            "Progress",
+            "Size",
+        ])
         self.queue_table.horizontalHeader().setSectionResizeMode(1, QHeaderView.Stretch)
         self.queue_table.setSelectionBehavior(QTableWidget.SelectRows)
         self.queue_table.setSelectionMode(QTableWidget.SingleSelection)
