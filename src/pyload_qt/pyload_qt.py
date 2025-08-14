@@ -227,6 +227,18 @@ class AddPackageDialog(QDialog):
         return name, links
 
 
+# https://stackoverflow.com/a/2304495/10440128
+class SortKeyTableWidgetItem(QTableWidgetItem):
+    def __init__(self, text, sortKey):
+        #call custom constructor with UserType item type
+        super().__init__(text, QTableWidgetItem.UserType)
+        self.sortKey = sortKey
+
+    #Qt uses a simple < check for sorting items, override this to use the sortKey
+    def __lt__(self, other):
+        return self.sortKey < other.sortKey
+
+
 class PyLoadUI(QMainWindow):
     def __init__(self):
         super().__init__()
@@ -265,15 +277,18 @@ class PyLoadUI(QMainWindow):
         # Package contents table
         self.contents_table = QTableWidget()
         self.contents_table.setColumnCount(3)
-        self.contents_table.setHorizontalHeaderLabels(["File name", "Status", "Error"])
+        self.contents_table.setHorizontalHeaderLabels(["Pos", "File name", "Status", "Error"])
         self.contents_table.horizontalHeader().setSectionResizeMode(
-            0, QHeaderView.Stretch
+            1, QHeaderView.Stretch
         )
         self.contents_table.setSelectionBehavior(QTableWidget.SelectRows)
         self.contents_table.setSelectionMode(QTableWidget.ExtendedSelection)
         self.contents_table.setContextMenuPolicy(Qt.CustomContextMenu)
         self.contents_table.customContextMenuRequested.connect(self.show_contents_context_menu)
         self.contents_table.setSortingEnabled(True)
+        self.contents_table.verticalHeader().setVisible(False)
+        self.contents_table.horizontalHeaderItem(0).setToolTip("Position")
+        self.contents_table.sortItems(0, Qt.AscendingOrder)
 
         # Splitter for tables
         splitter = QSplitter(Qt.Vertical)
@@ -455,17 +470,6 @@ class PyLoadUI(QMainWindow):
             QMessageBox.warning(self, "Error", "Could not fetch queue")
             return
 
-        # https://stackoverflow.com/a/2304495/10440128
-        class SortKeyTableWidgetItem(QTableWidgetItem):
-            def __init__(self, text, sortKey):
-                #call custom constructor with UserType item type
-                super().__init__(text, QTableWidgetItem.UserType)
-                self.sortKey = sortKey
-
-            #Qt uses a simple < check for sorting items, override this to use the sortKey
-            def __lt__(self, other):
-                return self.sortKey < other.sortKey
-
         self.queue_table.setRowCount(len(queue_data))
         for row, package in enumerate(queue_data):
             col = 0
@@ -521,14 +525,25 @@ class PyLoadUI(QMainWindow):
         self.contents_table.setRowCount(len(links))
 
         for row, link in enumerate(links):
+            col = 0
+
+            # Position
+            position_item = SortKeyTableWidgetItem(str(row + 1), (row + 1))
+            position_item.setData(Qt.UserRole, link["fid"])  # Store file ID
+            self.contents_table.setItem(row, col, position_item)
+            col += 1
+
             # Filename
-            self.contents_table.setItem(row, 0, QTableWidgetItem(link["name"]))
+            self.contents_table.setItem(row, col, QTableWidgetItem(link["name"]))
+            col += 1
 
             # Status
-            self.contents_table.setItem(row, 1, QTableWidgetItem(link["statusmsg"]))
+            self.contents_table.setItem(row, col, QTableWidgetItem(link["statusmsg"]))
+            col += 1
 
             # Error
-            self.contents_table.setItem(row, 2, QTableWidgetItem(link["error"]))
+            self.contents_table.setItem(row, col, QTableWidgetItem(link["error"]))
+            col += 1
 
     def add_package(self):
         name = self.package_name_input.text().strip()
