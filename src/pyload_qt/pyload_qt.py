@@ -276,8 +276,14 @@ class PyLoadUI(QMainWindow):
 
         # Package contents table
         self.contents_table = QTableWidget()
-        self.contents_table.setColumnCount(3)
-        self.contents_table.setHorizontalHeaderLabels(["Pos", "File name", "Status", "Error"])
+        self.contents_table.setColumnCount(5)
+        self.contents_table.setHorizontalHeaderLabels([
+            "Pos",
+            "File name",
+            "Plugin",
+            "Status",
+            "Error",
+        ])
         self.contents_table.horizontalHeader().setSectionResizeMode(
             1, QHeaderView.Stretch
         )
@@ -535,6 +541,10 @@ class PyLoadUI(QMainWindow):
 
             # Filename
             self.contents_table.setItem(row, col, QTableWidgetItem(link["name"]))
+            col += 1
+
+            # Plugin
+            self.contents_table.setItem(row, col, QTableWidgetItem(link["plugin"]))
             col += 1
 
             # Status
