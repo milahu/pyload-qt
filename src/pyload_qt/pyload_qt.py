@@ -315,7 +315,7 @@ class PyLoadUI(QMainWindow):
         self.contents_table.setColumnCount(5)
         self.contents_table.setHorizontalHeaderLabels([
             "Pos",
-            "File name",
+            "Link name",
             "Plugin",
             "Status",
             "Error",
