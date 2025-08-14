@@ -23,7 +23,9 @@ from PySide6.QtNetwork import QNetworkAccessManager, QNetworkRequest, QNetworkRe
 class PyLoadClient:
     def __init__(self):
         self.manager = QNetworkAccessManager()
-        self.base_url = "http://localhost:8000/api"
+        self.base_url = "http://localhost:8000/api" # ipv4: login fails with NetworkError.ConnectionRefusedError
+        self.base_url = "http://127.0.0.1:8000/api" # ipv4: login fails with NetworkError.ConnectionRefusedError
+        self.base_url = "http://[::1]:8000/api" # ipv6
         self.session_cookie = None
 
     def login(self, username, password, callback):
@@ -45,6 +47,7 @@ class PyLoadClient:
                 else:
                     callback(False)
             else:
+                print("login: error", reply.error())
                 callback(False)
             reply.deleteLater()
 
