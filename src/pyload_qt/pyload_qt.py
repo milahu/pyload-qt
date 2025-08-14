@@ -22,11 +22,15 @@ from PySide6.QtWidgets import (
     QMessageBox,
     QDialog,
     QMenu,
+    QStyle,
+    QToolButton,
+    QVBoxLayout,
 )
 from PySide6.QtCore import Qt, QUrl
 from PySide6.QtNetwork import QNetworkAccessManager, QNetworkRequest, QNetworkReply
 from PySide6.QtGui import QIcon, QScreen
 from PySide6.QtGui import QAction, QKeySequence
+from PySide6.QtGui import QFont
 
 
 class PyLoadClient:
@@ -243,6 +247,8 @@ class PyLoadUI(QMainWindow):
 
         self.create_menu()
 
+        self.create_toolbar()
+
         # Queue table
         self.queue_table = QTableWidget()
         self.queue_table.setColumnCount(3)
@@ -292,6 +298,77 @@ class PyLoadUI(QMainWindow):
         quit_action = file_menu.addAction("Quit")
         quit_action.triggered.connect(self.close)
         quit_action.setShortcut(QKeySequence.Quit) # shortcut: Ctrl+Q
+
+    def create_toolbar(self):
+        self.toolbar = self.addToolBar("Tools")
+
+        start_icon = self.style().standardIcon(QStyle.SP_MediaPlay)
+        start_action = QAction(start_icon, "Start downloads", self)
+        start_action.triggered.connect(self.start_downloads)
+        self.toolbar.addAction(start_action)
+
+        pause_icon = self.style().standardIcon(QStyle.SP_MediaPause)
+        pause_action = QAction(pause_icon, "Pause downloads", self)
+        pause_action.triggered.connect(self.pause_downloads)
+        self.toolbar.addAction(pause_action)
+
+        stop_icon = self.style().standardIcon(QStyle.SP_MediaStop)
+        stop_action = QAction(stop_icon, "Stop downloads", self)
+        stop_action.triggered.connect(self.stop_downloads)
+        self.toolbar.addAction(stop_action)
+
+        """
+        add_icon = QIcon(os.path.dirname(__file__) + "/img/plus-svgrepo-com.svg")
+        add_action = QAction(add_icon, "Add Package", self)
+        add_action.triggered.connect(self.show_add_package_dialog)
+        self.toolbar.addAction(add_action)
+        """
+
+        def add_text_button(label, tooltip, action, size=25, bold=False):
+            # https://stackoverflow.com/a/79735780/10440128
+            button = QToolButton()
+            _action = QAction()
+            _action.setToolTip(tooltip)
+            _action.triggered.connect(action)
+            button.setDefaultAction(_action)
+            layout = QVBoxLayout(button)
+            _label = QLabel(label)
+            font_weight = QFont.Bold if bold else QFont.Normal
+            font = QFont("Arial", size, font_weight)
+            _label.setFont(font)
+            layout.addWidget(_label, 0, Qt.AlignCenter)
+            self.toolbar.addWidget(button)
+
+        # plus symbol
+        add_text_button("+", "Add Package", self.show_add_package_dialog, 25, True)
+
+        # trash symbol = Wastebasket
+        add_text_button("🗑", "Remove Finished", self.remove_finished, 14)
+
+        # restart symbol = Anticlockwise Open Circle Arrow
+        add_text_button("↺", "Restart Failed", self.restart_failed, 18)
+
+    def start_downloads(self):
+        cb = lambda *a: print("start_downloads: done")
+        self.client.unpause_server(cb)
+
+    def pause_downloads(self):
+        cb = lambda *a: print("pause_downloads: done")
+        self.client.pause_server(cb)
+
+    def stop_downloads(self):
+        cb = lambda *a: print("stop_downloads: done")
+        self.client.stop_all_downloads(cb)
+
+    # def on_stop_all_downloads(self):
+    #     print("on_stop_all_downloads")
+
+    def remove_finished(self):
+        print("TODO remove_finished")
+
+    def restart_failed(self):
+        cb = lambda *a: print("restart_failed: done")
+        self.client.restart_failed(cb)
 
     def show_contents_context_menu(self, position):
         selected_rows = set(index.row() for index in self.contents_table.selectedIndexes())
