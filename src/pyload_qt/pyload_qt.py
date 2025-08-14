@@ -25,6 +25,7 @@ from PySide6.QtWidgets import (
     QStyle,
     QToolButton,
     QVBoxLayout,
+    QAbstractItemView,
 )
 from PySide6.QtCore import Qt, QUrl
 from PySide6.QtNetwork import QNetworkAccessManager, QNetworkRequest, QNetworkReply
@@ -278,6 +279,7 @@ class PyLoadUI(QMainWindow):
         self.queue_table.verticalHeader().setVisible(False)
         self.queue_table.horizontalHeaderItem(0).setToolTip("Position")
         self.queue_table.sortItems(0, Qt.AscendingOrder)
+        self.queue_table.setEditTriggers(QAbstractItemView.NoEditTriggers)
 
         # Package contents table
         self.contents_table = QTableWidget()
@@ -300,6 +302,7 @@ class PyLoadUI(QMainWindow):
         self.contents_table.verticalHeader().setVisible(False)
         self.contents_table.horizontalHeaderItem(0).setToolTip("Position")
         self.contents_table.sortItems(0, Qt.AscendingOrder)
+        self.contents_table.setEditTriggers(QAbstractItemView.NoEditTriggers)
 
         # Splitter for tables
         splitter = QSplitter(Qt.Vertical)
