@@ -252,12 +252,14 @@ class PyLoadUI(QMainWindow):
         # Queue table
         self.queue_table = QTableWidget()
         self.queue_table.setColumnCount(3)
-        self.queue_table.setHorizontalHeaderLabels(["Name", "Progress", "Size"])
-        self.queue_table.horizontalHeader().setSectionResizeMode(0, QHeaderView.Stretch)
+        self.queue_table.setHorizontalHeaderLabels(["Pos", "Name", "Progress", "Size"])
+        self.queue_table.horizontalHeader().setSectionResizeMode(1, QHeaderView.Stretch)
         self.queue_table.setSelectionBehavior(QTableWidget.SelectRows)
         self.queue_table.setSelectionMode(QTableWidget.SingleSelection)
         self.queue_table.itemSelectionChanged.connect(self.on_package_selected)
         self.queue_table.setSortingEnabled(True)
+        self.queue_table.verticalHeader().setVisible(False)
+        self.queue_table.horizontalHeaderItem(0).setToolTip("Position")
 
         # Package contents table
         self.contents_table = QTableWidget()
@@ -465,10 +467,18 @@ class PyLoadUI(QMainWindow):
 
         self.queue_table.setRowCount(len(queue_data))
         for row, package in enumerate(queue_data):
+            col = 0
+
+            # Position
+            position_item = SortKeyTableWidgetItem(str(row + 1), (row + 1))
+            position_item.setData(Qt.UserRole, package["pid"])  # Store package ID
+            self.queue_table.setItem(row, col, position_item)
+            col += 1
+
             # Name
             name_item = QTableWidgetItem(package["name"])
-            name_item.setData(Qt.UserRole, package["pid"])  # Store package ID
-            self.queue_table.setItem(row, 0, name_item)
+            self.queue_table.setItem(row, col, name_item)
+            col += 1
 
             # Progress
             if package["sizetotal"] > 0:
@@ -479,7 +489,8 @@ class PyLoadUI(QMainWindow):
                 progress_text = "0.0%"
             # self.queue_table.setItem(row, 1, QTableWidgetItem(progress_text))
             progress_item = SortKeyTableWidgetItem(progress_text, progress)
-            self.queue_table.setItem(row, 1, progress_item)
+            self.queue_table.setItem(row, col, progress_item)
+            col += 1
 
             # Size
             size = package["sizetotal"]
@@ -487,7 +498,12 @@ class PyLoadUI(QMainWindow):
             size_text = f"{size_mb:.2f} MB"
             # self.queue_table.setItem(row, 2, QTableWidgetItem(size_text))
             size_item = SortKeyTableWidgetItem(size_text, size)
-            self.queue_table.setItem(row, 2, size_item)
+            self.queue_table.setItem(row, col, size_item)
+            col += 1
+
+        # FIXME this should not be necessary
+        # because we insert the items in order
+        self.queue_table.sortItems(0, Qt.AscendingOrder)
 
     def on_package_selected(self):
         selected_items = self.queue_table.selectedItems()
