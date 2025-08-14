@@ -359,7 +359,7 @@ class PyLoadUI(QMainWindow):
                 progress_text = f"{progress:.1f}%"
             else:
                 progress = 0
-                progress_text = "0%"
+                progress_text = "0.0%"
             # self.queue_table.setItem(row, 1, QTableWidgetItem(progress_text))
             progress_item = SortKeyTableWidgetItem(progress_text, progress)
             self.queue_table.setItem(row, 1, progress_item)
