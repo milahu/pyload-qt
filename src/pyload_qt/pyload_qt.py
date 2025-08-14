@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 
+import os
 import sys
 import signal
 import json
@@ -22,6 +23,7 @@ from PySide6.QtWidgets import (
 )
 from PySide6.QtCore import Qt, QUrl
 from PySide6.QtNetwork import QNetworkAccessManager, QNetworkRequest, QNetworkReply
+from PySide6.QtGui import QIcon, QScreen
 
 
 class PyLoadClient:
@@ -124,6 +126,7 @@ class PyLoadUI(QMainWindow):
     def init_ui(self):
         self.setWindowTitle("PyLoad Client")
         self.setGeometry(100, 100, 800, 600)
+        self.setWindowIcon(QIcon(os.path.dirname(__file__) + "/pyload-logo.png"))
 
         # Main widget and layout
         main_widget = QWidget()
