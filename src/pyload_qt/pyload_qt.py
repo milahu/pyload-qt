@@ -31,6 +31,8 @@ from PySide6.QtGui import QAction, QKeySequence
 class PyLoadClient:
     def __init__(self):
         self.manager = QNetworkAccessManager()
+        # FIXME by default, the pyload server runs with ipv6
+        # but with webui.develop=True in ~/.pyload/settings/pyload.cfg it runs with ipv4
         self.base_url = "http://localhost:8000/api" # ipv4: login fails with NetworkError.ConnectionRefusedError
         self.base_url = "http://127.0.0.1:8000/api" # ipv4: login fails with NetworkError.ConnectionRefusedError
         self.base_url = "http://[::1]:8000/api" # ipv6
