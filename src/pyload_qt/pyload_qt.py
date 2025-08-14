@@ -529,7 +529,7 @@ class PyLoadUI(QMainWindow):
 
             # Progress
             if package["sizetotal"] > 0:
-                progress = (package["sizedone"] / package["sizetotal"]) * 100
+                progress = (package["linksdone"] / package["linkstotal"]) * 100
                 progress_text = f"{progress:.1f}%"
             else:
                 progress = 0
