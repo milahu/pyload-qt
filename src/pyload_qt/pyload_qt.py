@@ -553,7 +553,9 @@ class PyLoadUI(QMainWindow):
             col += 1
 
             # Status
-            self.contents_table.setItem(row, col, QTableWidgetItem(link["statusmsg"]))
+            # todo? map from link["status"] to custom order
+            status_item = SortKeyTableWidgetItem(link["statusmsg"], link["status"])
+            self.contents_table.setItem(row, col, status_item)
             col += 1
 
             # Error
