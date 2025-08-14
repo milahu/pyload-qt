@@ -211,6 +211,7 @@ class PyLoadUI(QMainWindow):
         self.queue_table.setSelectionBehavior(QTableWidget.SelectRows)
         self.queue_table.setSelectionMode(QTableWidget.SingleSelection)
         self.queue_table.itemSelectionChanged.connect(self.on_package_selected)
+        self.queue_table.setSortingEnabled(True)
 
         # Package contents table
         self.contents_table = QTableWidget()
@@ -223,6 +224,7 @@ class PyLoadUI(QMainWindow):
         self.contents_table.setSelectionMode(QTableWidget.ExtendedSelection)
         self.contents_table.setContextMenuPolicy(Qt.CustomContextMenu)
         self.contents_table.customContextMenuRequested.connect(self.show_contents_context_menu)
+        self.contents_table.setSortingEnabled(True)
 
         # Splitter for tables
         splitter = QSplitter(Qt.Vertical)
@@ -333,6 +335,17 @@ class PyLoadUI(QMainWindow):
             QMessageBox.warning(self, "Error", "Could not fetch queue")
             return
 
+        # https://stackoverflow.com/a/2304495/10440128
+        class SortKeyTableWidgetItem(QTableWidgetItem):
+            def __init__(self, text, sortKey):
+                #call custom constructor with UserType item type
+                super().__init__(text, QTableWidgetItem.UserType)
+                self.sortKey = sortKey
+
+            #Qt uses a simple < check for sorting items, override this to use the sortKey
+            def __lt__(self, other):
+                return self.sortKey < other.sortKey
+
         self.queue_table.setRowCount(len(queue_data))
         for row, package in enumerate(queue_data):
             # Name
@@ -345,13 +358,19 @@ class PyLoadUI(QMainWindow):
                 progress = (package["sizedone"] / package["sizetotal"]) * 100
                 progress_text = f"{progress:.1f}%"
             else:
+                progress = 0
                 progress_text = "0%"
-            self.queue_table.setItem(row, 1, QTableWidgetItem(progress_text))
+            # self.queue_table.setItem(row, 1, QTableWidgetItem(progress_text))
+            progress_item = SortKeyTableWidgetItem(progress_text, progress)
+            self.queue_table.setItem(row, 1, progress_item)
 
             # Size
+            size = package["sizetotal"]
             size_mb = package["sizetotal"] / (1024 * 1024)
             size_text = f"{size_mb:.2f} MB"
-            self.queue_table.setItem(row, 2, QTableWidgetItem(size_text))
+            # self.queue_table.setItem(row, 2, QTableWidgetItem(size_text))
+            size_item = SortKeyTableWidgetItem(size_text, size)
+            self.queue_table.setItem(row, 2, size_item)
 
     def on_package_selected(self):
         selected_items = self.queue_table.selectedItems()
