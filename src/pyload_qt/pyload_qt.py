@@ -674,7 +674,7 @@ class PyLoadUI(QMainWindow):
         reply = QMessageBox.question(
             self,
             "Confirm Removal",
-            f"Are you sure you want to remove {len(fids)} link(s)?",
+            f"Remove {len(fids)} links?",
             QMessageBox.Yes | QMessageBox.No,
             QMessageBox.No
         )
