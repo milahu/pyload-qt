@@ -450,7 +450,7 @@ class PyLoadUI(QMainWindow):
         table.setColumnCount(5)
         table.setHorizontalHeaderLabels([
             "Pos",
-            "Link name",
+            "Link", # link name
             "Plugin",
             "Status",
             "Error",
