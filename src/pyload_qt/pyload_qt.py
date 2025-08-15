@@ -31,6 +31,7 @@ from PySide6.QtWidgets import (
     QStackedWidget,
 )
 from PySide6.QtCore import Qt, QUrl
+from PySide6.QtCore import QTimer
 from PySide6.QtNetwork import QNetworkAccessManager, QNetworkRequest, QNetworkReply
 from PySide6.QtGui import QIcon, QScreen
 from PySide6.QtGui import QAction, QKeySequence
@@ -284,6 +285,8 @@ class PyLoadUI(QMainWindow):
         self.current_package = None
         self.init_ui()
         self.login()
+        self.refresh_interval = 5 # refresh every 5 seconds
+        self.init_refresh_timer()
 
     def init_ui(self):
         self.setWindowTitle("pyLoad")
@@ -431,8 +434,12 @@ class PyLoadUI(QMainWindow):
         stack.setCurrentIndex(self.default_bottom_view_idx)
         return stack
 
+    def get_bottom_view_idx(self):
+        return self.bottom_view_stack.currentIndex()
+
     def set_bottom_view_idx(self, bottom_view_idx):
         self.bottom_view_stack.setCurrentIndex(bottom_view_idx)
+        self.refresh_bottom_view()
 
     def create_package_package_view(self):
         return QLabel("TODO package view")
@@ -463,7 +470,95 @@ class PyLoadUI(QMainWindow):
         return table
 
     def create_package_downloads_view(self):
-        return QLabel("TODO downloads view")
+        table = QTableWidget()
+        column_labels = [
+            "Pos",
+            "Package", # package name
+            "Link", # link name
+            "Progress",
+            "Size",
+            "Plugin",
+            "Status",
+            "Info",
+        ]
+        table.setColumnCount(len(column_labels))
+        table.setHorizontalHeaderLabels(column_labels)
+        table.horizontalHeader().setSectionResizeMode(
+            1, QHeaderView.Stretch
+        )
+        table.setSelectionBehavior(QTableWidget.SelectRows)
+        table.setSelectionMode(QTableWidget.ExtendedSelection)
+        table.setContextMenuPolicy(Qt.CustomContextMenu)
+        table.customContextMenuRequested.connect(self.show_package_links_context_menu)
+        table.setSortingEnabled(True)
+        table.verticalHeader().setVisible(False)
+        table.horizontalHeaderItem(0).setToolTip("Position")
+        table.sortItems(0, Qt.AscendingOrder)
+        table.setEditTriggers(QAbstractItemView.NoEditTriggers)
+        # TODO add context menu
+        return table
+
+    def refresh_package_downloads_view(self):
+        self.client.links(self.on_package_downloads_data)
+
+    def on_package_downloads_data(self, links):
+        # TODO what is links["ids"]? these are different from link["fid"]
+        # print("links", links)
+        table = self.package_downloads_view
+        table.setRowCount(len(links["links"]))
+        for row, link in enumerate(links["links"]):
+            col = 0
+
+            # Position
+            item = SortKeyTableWidgetItem(str(row + 1), (row + 1))
+            item.setData(Qt.UserRole, link["fid"])  # Store file ID
+            # TODO also store package_id?
+            table.setItem(row, col, item)
+            col += 1
+
+            # Package name
+            item = QTableWidgetItem(link["package_name"])
+            table.setItem(row, col, item)
+            col += 1
+
+            # Link name
+            item = QTableWidgetItem(link["name"])
+            table.setItem(row, col, item)
+            col += 1
+
+            # Progress
+            if link["size"] > 0:
+                progress = ((link["size"] - link["bleft"]) / link["size"]) * 100
+                progress_text = f"{progress:.1f}%"
+            else:
+                progress = 0
+                progress_text = "0.0%"
+            item = SortKeyTableWidgetItem(progress_text, progress)
+            table.setItem(row, col, item)
+            col += 1
+
+            # Size
+            size = link["size"]
+            # FIXME pyload: zero size is "0.00 Bit"
+            # size_text = link["format_size"]
+            size_text = link["format_size"] if link["size"] > 0 else "0"
+            item = SortKeyTableWidgetItem(size_text, size)
+            table.setItem(row, col, item)
+            col += 1
+
+            # Plugin
+            table.setItem(row, col, QTableWidgetItem(link["plugin"]))
+            col += 1
+
+            # Status
+            # todo? map from link["status"] to custom order
+            item = SortKeyTableWidgetItem(link["statusmsg"], link["status"])
+            table.setItem(row, col, item)
+            col += 1
+
+            # Info
+            table.setItem(row, col, QTableWidgetItem(link["info"]))
+            col += 1
 
     def create_package_files_view(self):
         return QLabel("TODO files view")
@@ -618,6 +713,41 @@ class PyLoadUI(QMainWindow):
             self.refresh_queue()
         else:
             QMessageBox.critical(self, "Login Failed", "Could not login to pyLoad")
+
+    def init_refresh_timer(self):
+        self.refresh_timer = timer = QTimer()
+        timer.timeout.connect(self.refresh_timer_tick)
+        timer.start(self.refresh_interval * 1000)
+
+    def refresh_timer_tick(self):
+        self.refresh_bottom_view()
+
+    def refresh_bottom_view(self):
+        bottom_view_idx = self.get_bottom_view_idx()
+        if bottom_view_idx == self.BottomViewIdx.Package:
+            pass
+        elif bottom_view_idx == self.BottomViewIdx.Links:
+            pass
+        elif bottom_view_idx == self.BottomViewIdx.Downloads:
+            self.refresh_package_downloads_view()
+        elif bottom_view_idx == self.BottomViewIdx.Files:
+            pass
+
+        # TODO refresh status
+        """
+        http://localhost:8000/json/status
+        {
+            "pause": false,
+            "active": 2,
+            "queue": 14194,
+            "total": 14859,
+            "speed": 55321.0,
+            "download": true,
+            "reconnect": false,
+            "captcha": false,
+            "proxy": false
+        }
+        """
 
     def refresh_queue(self):
         self.client.get_queue(self.on_queue_received)
