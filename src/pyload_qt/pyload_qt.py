@@ -268,6 +268,10 @@ class SortKeyTableWidgetItem(QTableWidgetItem):
         return self.sortKey < other.sortKey
 
 
+class Object(object):
+     pass
+
+
 class PyLoadUI(QMainWindow):
     def __init__(self):
         super().__init__()
@@ -294,18 +298,18 @@ class PyLoadUI(QMainWindow):
 
         self.package_links_table = None
 
-        self.bottom_view = self.create_bottom_view()
-
         # Splitter for tables
         splitter = QSplitter(Qt.Vertical)
-        splitter.addWidget(self.packages_table)
-        splitter.addWidget(self.bottom_view)
-        splitter.setSizes([300, 200])
 
         # Add widgets to main layout
         main_layout.addWidget(splitter)
 
         self.create_bottom_view_button_group(main_layout)
+        self.bottom_view = self.create_bottom_view()
+
+        splitter.addWidget(self.packages_table)
+        splitter.addWidget(self.bottom_view)
+        splitter.setSizes([300, 200])
 
     def create_menu(self):
         self.menu = self.menuBar()
@@ -398,9 +402,15 @@ class PyLoadUI(QMainWindow):
         return table
 
     def create_bottom_view(self):
-        # TODO switch self.bottom_view_checked_button_idx
-        view = self.create_package_links_view()
-        self.package_links_table = view
+        if self.bottom_view_idx == self.BottomViewIdx.Package:
+            raise "todo"
+        elif self.bottom_view_idx == self.BottomViewIdx.Links:
+            view = self.create_package_links_view()
+            self.package_links_table = view
+        elif self.bottom_view_idx == self.BottomViewIdx.Downloads:
+            raise "todo"
+        elif self.bottom_view_idx == self.BottomViewIdx.Files:
+            raise "todo"
         return view
 
     def create_package_links_view(self):
@@ -434,61 +444,63 @@ class PyLoadUI(QMainWindow):
         layout = QHBoxLayout(widget)
         self.bottom_view_button_list = []
 
+        bottom_view_id_enum_args = []
+
+        def add_button(idx, name):
+            button = QPushButton(name, self)
+            group.addButton(button)
+            layout.addWidget(button)
+            # button.clicked.connect(lambda b=button: self.toggle_bottom_view(b)) # b == True ?!
+            # button.clicked.connect(lambda i=button_idx: self.toggle_bottom_view(i)) # i == True ?!
+            button.clicked.connect(lambda: self.toggle_bottom_view(idx))
+            button.setCheckable(True)
+            self.bottom_view_button_list.append(button)
+            bottom_view_id_enum_args.append((idx, name))
+            return button
+
         button_idx = -1
 
-        button_idx += 1
-        button = QPushButton("Package", self)
-        group.addButton(button)
-        layout.addWidget(button)
-        # button.clicked.connect(lambda b=button: self.toggle_bottom_view(b)) # b == True ?!
-        # button.clicked.connect(lambda i=button_idx: self.toggle_bottom_view(i)) # i == True ?!
-        button.clicked.connect(lambda: self.toggle_bottom_view(0))
-        button.setCheckable(True)
-        self.bottom_view_button_list.append(button)
+        bottom_view_names = [
+            "Package",
+            "Links",
+            "Downloads",
+            "Files",
+        ]
 
-        button_idx += 1
-        button = QPushButton("Links", self)
-        group.addButton(button)
-        layout.addWidget(button)
-        button.clicked.connect(lambda: self.toggle_bottom_view(1))
-        button.setCheckable(True)
-        self.bottom_view_button_list.append(button)
-        # this button is checked
-        button.setChecked(True)
-        self.bottom_button_checked_id = group.id(button)
-        self.bottom_button_checked_button = button
-        self.bottom_view_checked_button_idx = button_idx
+        default_bottom_view_name = "Links"
+        assert default_bottom_view_name in bottom_view_names
 
-        button_idx += 1
-        button = QPushButton("Downloads", self)
-        group.addButton(button)
-        layout.addWidget(button)
-        button.clicked.connect(lambda: self.toggle_bottom_view(2))
-        button.setCheckable(True)
-        self.bottom_view_button_list.append(button)
+        for name in bottom_view_names:
+            button_idx += 1
+            button = add_button(button_idx, name)
+            if name == default_bottom_view_name:
+                # this button is checked
+                button.setChecked(True)
+                self.bottom_button_checked_id = group.id(button)
+                self.bottom_button_checked_button = button
+                self.bottom_view_idx = button_idx
 
-        button_idx += 1
-        button = QPushButton("Files", self)
-        group.addButton(button)
-        layout.addWidget(button)
-        button.clicked.connect(lambda: self.toggle_bottom_view(3))
-        button.setCheckable(True)
-        self.bottom_view_button_list.append(button)
+        assert self.bottom_view_idx
+
+        self.BottomViewIdx = Object()
+        for idx, name in bottom_view_id_enum_args:
+            setattr(self.BottomViewIdx, name, idx)
+        assert self.BottomViewIdx.Links
 
         main_layout.addWidget(widget)
 
     def toggle_bottom_view(self, clicked_button_idx):
         clicked_button = self.bottom_view_button_list[clicked_button_idx]
-        if clicked_button_idx == self.bottom_view_checked_button_idx:
+        if clicked_button_idx == self.bottom_view_idx:
             print(f"TODO hide bottom view")
             self.bottom_view_button_group.setExclusive(False)
             clicked_button.setChecked(False)
-            self.bottom_view_checked_button_idx = None
+            self.bottom_view_idx = None
         else:
             print(f"TODO show bottom view {clicked_button_idx}")
             clicked_button.setChecked(True)
             self.bottom_view_button_group.setExclusive(True)
-            self.bottom_view_checked_button_idx = clicked_button_idx
+            self.bottom_view_idx = clicked_button_idx
 
     def start_downloads(self):
         cb = lambda *a: print("start_downloads: done")
