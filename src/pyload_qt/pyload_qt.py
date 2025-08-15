@@ -287,6 +287,7 @@ class PyLoadUI(QMainWindow):
         self.login()
         self.refresh_interval = 5 # refresh every 5 seconds
         self.init_refresh_timer()
+        self._debug_remove_links = False
 
     def init_ui(self):
         self.setWindowTitle("pyLoad")
@@ -653,19 +654,13 @@ class PyLoadUI(QMainWindow):
             self.remove_selected_links()
 
     def remove_selected_links(self):
-        selected_rows = set(index.row() for index in self.package_links_table.selectedIndexes())
-        if not selected_rows:
-            return
-
-        if not self.current_package or "links" not in self.current_package:
-            return
-
-        # Get the fids of selected links
+        table = self.package_links_table
         fids = []
-        for row in selected_rows:
-            if row < len(self.current_package["links"]):
-                link = self.current_package["links"][row]
-                fids.append(link["fid"])
+        for item in table.selectedItems():
+            # position_item.setData(Qt.UserRole, link["fid"])  # Store file ID
+            # Get file ID from selected row
+            fid = table.item(item.row(), 0).data(Qt.UserRole)
+            fids.append(fid)
 
         if not fids:
             return
@@ -679,8 +674,24 @@ class PyLoadUI(QMainWindow):
             QMessageBox.No
         )
 
-        if reply == QMessageBox.Yes:
-            self.client.delete_files(fids, self.on_files_deleted)
+        if reply != QMessageBox.Yes:
+            return
+
+        # self._debug_remove_links = True
+        if self._debug_remove_links:
+            print("links before remove")
+            for i, link in enumerate(self.current_package["links"]):
+                print(" ", i + 1, link["fid"], link["statusmsg"], link["url"])
+            print("removing links")
+            for i, link in enumerate(self.current_package["links"]):
+                if link["fid"] in fids:
+                    print(" ", i + 1, link["fid"], link["statusmsg"], link["url"])
+
+        self.client.delete_files(fids, self.on_files_deleted)
+
+        # no. dont trust the server to remove links -> fetch new package data in on_files_deleted
+        # also remove links from self.current_package
+        # self.current_package["links"] = list(filter(lambda l: l["fid"] not in fids, self.current_package["links"]))
 
     def on_files_deleted(self, success):
         if success:
@@ -832,6 +843,18 @@ class PyLoadUI(QMainWindow):
             return
 
         self.current_package = package_data
+
+        if self._debug_remove_links:
+            print("links after remove")
+            for i, link in enumerate(self.current_package["links"]):
+                print(" ", i + 1, link["fid"], link["statusmsg"], link["url"])
+            self._debug_remove_links = False
+
+        # this seems to be necessary to fix table updates
+        # without this, the result table can contain duplicate values
+        # TODO why?
+        self.package_links_table.setRowCount(0)
+
         links = package_data.get("links", [])
         self.package_links_table.setRowCount(len(links))
 
