@@ -128,6 +128,8 @@ class PyLoadClient:
                 else:
                     # TODO also print response body with the server exception
                     print(f"{name} reply.error", reply.error())
+                    # consumers should check the result with
+                    # isinstance(result, QNetworkReply.NetworkError)
                     if callback: callback(reply.error())
                 reply.deleteLater()
             reply.finished.connect(handle_reply)
@@ -518,8 +520,9 @@ class PyLoadUI(QMainWindow):
     def on_package_files_data(self, file_details_list):
         # print(f"file_details_list {json.dumps(file_details_list, indent=2)}")
         table = self.package_files_view
-        if file_details_list is None:
+        if file_details_list is None or isinstance(file_details_list, QNetworkReply.NetworkError):
             # this can happen when the folder does not exist
+            # QNetworkReply.NetworkError.InternalServerError
             table.setRowCount(0)
             return
         # table.setRowCount(0)
