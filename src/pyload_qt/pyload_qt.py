@@ -42,9 +42,9 @@ class PyLoadClient:
         self.manager = QNetworkAccessManager()
         # FIXME by default, the pyload server runs with ipv6
         # but with webui.develop=True in ~/.pyload/settings/pyload.cfg it runs with ipv4
-        self.base_url = "http://localhost:8000/api" # ipv4: login fails with NetworkError.ConnectionRefusedError
-        self.base_url = "http://127.0.0.1:8000/api" # ipv4: login fails with NetworkError.ConnectionRefusedError
-        self.base_url = "http://[::1]:8000/api" # ipv6
+        self.base_url = "http://localhost:8000" # ipv4: login fails with NetworkError.ConnectionRefusedError
+        self.base_url = "http://127.0.0.1:8000" # ipv4: login fails with NetworkError.ConnectionRefusedError
+        self.base_url = "http://[::1]:8000" # ipv6
         self.is_localhost = True
         self.session_cookie = None
         self.func_cache = {}
@@ -87,7 +87,11 @@ class PyLoadClient:
         # def func(*args, callback=None, **kwargs): # ?
         # def func(self, callback, *args, **kwargs):
         def func(callback, *args, **kwargs):
-            url = f"{self.base_url}/{name}"
+            if name in ("status", "links"):
+                api_dir = "json"
+            else:
+                api_dir = "api"
+            url = f"{self.base_url}/{api_dir}/{name}"
             if args:
                 url += "/" + ",".join(map(str, args))
             if kwargs:
@@ -114,7 +118,7 @@ class PyLoadClient:
         return func
 
     def login(self, username, password, callback):
-        url = f"{self.base_url}/login"
+        url = f"{self.base_url}/api/login"
         request = QNetworkRequest(QUrl(url))
         request.setHeader(
             QNetworkRequest.ContentTypeHeader, "application/x-www-form-urlencoded"
@@ -139,7 +143,7 @@ class PyLoadClient:
         reply.finished.connect(handle_reply)
 
     def get_queue(self, callback):
-        url = f"{self.base_url}/getQueue"
+        url = f"{self.base_url}/api/get_queue"
         request = QNetworkRequest(QUrl(url))
         if self.session_cookie:
             request.setRawHeader(b"Cookie", self.session_cookie.encode())
@@ -157,7 +161,7 @@ class PyLoadClient:
         reply.finished.connect(handle_reply)
 
     def get_package_data(self, pid, callback):
-        url = f"{self.base_url}/getPackageData/{pid}"
+        url = f"{self.base_url}/api/get_package_data/{pid}"
         request = QNetworkRequest(QUrl(url))
         if self.session_cookie:
             request.setRawHeader(b"Cookie", self.session_cookie.encode())
@@ -177,7 +181,7 @@ class PyLoadClient:
     def add_package(self, name, links, callback):
         encoded_name = json.dumps(name)
         encoded_links = json.dumps(links)
-        url = f"{self.base_url}/addPackage?name={encoded_name}&links={encoded_links}"
+        url = f"{self.base_url}/api/add_package?name={encoded_name}&links={encoded_links}"
         request = QNetworkRequest(QUrl(url))
         if self.session_cookie:
             request.setRawHeader(b"Cookie", self.session_cookie.encode())
@@ -198,7 +202,7 @@ class PyLoadClient:
             callback(False)
             return
         encoded_fids = json.dumps(fids, separators=(",", ":"))
-        url = f"{self.base_url}/delete_files?file_ids={encoded_fids}"
+        url = f"{self.base_url}/api/delete_files?file_ids={encoded_fids}"
         request = QNetworkRequest(QUrl(url))
         if self.session_cookie:
             request.setRawHeader(b"Cookie", self.session_cookie.encode())
