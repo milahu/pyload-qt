@@ -360,7 +360,9 @@ class PyLoadUI(QMainWindow):
         self.refresh_bottom_view()
 
     def create_package_package_view(self):
-        return QLabel("TODO package view")
+        label = QLabel("")
+        label.setTextInteractionFlags(Qt.TextSelectableByMouse)
+        return label
 
     def create_package_links_view(self):
         # Package links table
@@ -565,6 +567,28 @@ class PyLoadUI(QMainWindow):
             if _debug_package_files_view:
                 print(" ", file_details["type"][0], mtime_text, (size_text or "0.00 MB"), name)
 
+    def update_package_package_view(self):
+        selected_items = self.packages_table.selectedItems()
+        if not selected_items:
+            self.package_package_view.setText("")
+            return
+        def on_package_data_received(package_data):
+            self.current_package = package_data
+            # if not self.current_package:
+            #     self.package_package_view.setText("")
+            #     return
+            p = self.current_package
+            text = "\n".join([
+                f"package id: {p['pid']}",
+                f"folder: {p['folder']}",
+                f"password: {p['password']}",
+                f"links: {len(p['links'])}",
+            ])
+            # self.package_package_view.setText(json.dumps(self.current_package, indent=2))
+            self.package_package_view.setText(text)
+        pid = self.packages_table.item(selected_items[0].row(), 0).data(Qt.UserRole)
+        assert pid # TODO can this be None?
+        self.client.get_package_data(on_package_data_received, pid)
 
     def create_bottom_view_button_group(self, main_layout):
         self.bottom_view_button_group = group = QButtonGroup(self)
@@ -740,7 +764,7 @@ class PyLoadUI(QMainWindow):
         pid = self.selected_package_pid
         bottom_view_idx = self.get_bottom_view_idx()
         if bottom_view_idx == self.BottomViewIdx.Package:
-            pass
+            self.update_package_package_view()
         elif bottom_view_idx == self.BottomViewIdx.Links:
             if pid:
                 self.client.get_package_data(self.on_package_data_received, pid)
@@ -850,7 +874,6 @@ class PyLoadUI(QMainWindow):
         pid = self.packages_table.item(selected_items[0].row(), 0).data(Qt.UserRole)
         assert pid # TODO can this be None?
         self.client.get_package_data(on_package_data_received, pid)
-
 
     def on_package_data_received(self, package_data):
         if package_data is None:
