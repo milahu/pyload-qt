@@ -6,6 +6,7 @@ import signal
 import json
 import re
 import subprocess
+import urllib.parse
 from PySide6.QtWidgets import (
     QApplication,
     QMainWindow,
@@ -77,12 +78,12 @@ class PyLoadClient:
 
     # https://stackoverflow.com/questions/13194180/dynamic-method-generation-in-python
     def __getattr__(self, name):
-        print(f"getattr {name}")
+        # print(f"getattr {name}")
         try:
             return self.func_cache[name]
         except KeyError:
             pass
-        print(f"creating function {name}")
+        # print(f"creating function {name}")
         # def func(self, *args, **kwargs, callback): # ?
         # def func(self, *args, callback=None, **kwargs): # ?
         # def func(*args, callback=None, **kwargs): # ?
@@ -92,18 +93,33 @@ class PyLoadClient:
                 api_dir = "json"
             else:
                 api_dir = "api"
+            if name in ("login",):
+                # method = "post"
+                is_get = False
+            else:
+                # method = "get"
+                is_get = True
             url = f"{self.base_url}/{api_dir}/{name}"
             if args:
                 url += "/" + ",".join(map(str, args))
-            if kwargs:
+            if kwargs and is_get:
                 kwargs_json = dict()
                 for key, val in kwargs.items():
                     kwargs_json[key] = json.dumps(val, separators=(",", ":"))
                 url += "?" + urllib.parse.urlencode(kwargs_json)
+            elif kwargs and not is_get:
+                post_data = urllib.parse.urlencode(kwargs).encode()
+            # print(f"client.{name}: url = {url!r}")
             request = QNetworkRequest(QUrl(url))
             if self.session_cookie:
                 request.setRawHeader(b"Cookie", self.session_cookie.encode())
-            reply = self.manager.get(request)
+            if is_get:
+                reply = self.manager.get(request)
+            else:
+                request.setHeader(
+                    QNetworkRequest.ContentTypeHeader, "application/x-www-form-urlencoded"
+                )
+                reply = self.manager.post(request, post_data)
             def handle_reply():
                 if reply.error() == QNetworkReply.NoError:
                     data = json.loads(reply.readAll().data().decode())
@@ -111,115 +127,12 @@ class PyLoadClient:
                 else:
                     # TODO also print response body with the server exception
                     print(f"{name} reply.error", reply.error())
-                    if callback: callback(None)
+                    if callback: callback(reply.error())
                 reply.deleteLater()
             reply.finished.connect(handle_reply)
         func.__name__ = name
         self.func_cache[name] = func
         return func
-
-    def login(self, username, password, callback):
-        url = f"{self.base_url}/api/login"
-        request = QNetworkRequest(QUrl(url))
-        request.setHeader(
-            QNetworkRequest.ContentTypeHeader, "application/x-www-form-urlencoded"
-        )
-
-        post_data = f"username={username}&password={password}".encode()
-        reply = self.manager.post(request, post_data)
-
-        def handle_reply():
-            if reply.error() == QNetworkReply.NoError:
-                cookies = reply.header(QNetworkRequest.SetCookieHeader)
-                if cookies:
-                    self.session_cookie = cookies[0].toRawForm().data().decode()
-                    callback(True)
-                else:
-                    callback(False)
-            else:
-                print("login: error", reply.error())
-                callback(False)
-            reply.deleteLater()
-
-        reply.finished.connect(handle_reply)
-
-    def get_queue(self, callback):
-        url = f"{self.base_url}/api/get_queue"
-        request = QNetworkRequest(QUrl(url))
-        if self.session_cookie:
-            request.setRawHeader(b"Cookie", self.session_cookie.encode())
-
-        reply = self.manager.get(request)
-
-        def handle_reply():
-            if reply.error() == QNetworkReply.NoError:
-                data = json.loads(reply.readAll().data().decode())
-                callback(data)
-            else:
-                callback(None)
-            reply.deleteLater()
-
-        reply.finished.connect(handle_reply)
-
-    def get_package_data(self, pid, callback):
-        url = f"{self.base_url}/api/get_package_data/{pid}"
-        request = QNetworkRequest(QUrl(url))
-        if self.session_cookie:
-            request.setRawHeader(b"Cookie", self.session_cookie.encode())
-
-        reply = self.manager.get(request)
-
-        def handle_reply():
-            if reply.error() == QNetworkReply.NoError:
-                data = json.loads(reply.readAll().data().decode())
-                callback(data)
-            else:
-                callback(None)
-            reply.deleteLater()
-
-        reply.finished.connect(handle_reply)
-
-    def add_package(self, name, links, callback):
-        encoded_name = json.dumps(name)
-        encoded_links = json.dumps(links)
-        url = f"{self.base_url}/api/add_package?name={encoded_name}&links={encoded_links}"
-        request = QNetworkRequest(QUrl(url))
-        if self.session_cookie:
-            request.setRawHeader(b"Cookie", self.session_cookie.encode())
-
-        reply = self.manager.get(request)
-
-        def handle_reply():
-            if reply.error() == QNetworkReply.NoError:
-                callback(True)
-            else:
-                callback(False)
-            reply.deleteLater()
-
-        reply.finished.connect(handle_reply)
-
-    def delete_files(self, fids, callback):
-        if not fids:
-            callback(False)
-            return
-        encoded_fids = json.dumps(fids, separators=(",", ":"))
-        url = f"{self.base_url}/api/delete_files?file_ids={encoded_fids}"
-        request = QNetworkRequest(QUrl(url))
-        if self.session_cookie:
-            request.setRawHeader(b"Cookie", self.session_cookie.encode())
-
-        reply = self.manager.get(request)
-
-        def handle_reply():
-            if reply.error() == QNetworkReply.NoError:
-                callback(True)
-            else:
-                # TODO also print response body with the server exception
-                print("delete_files reply.error", reply.error())
-                callback(False)
-            reply.deleteLater()
-
-        reply.finished.connect(handle_reply)
 
 
 class AddPackageDialog(QDialog):
@@ -687,21 +600,21 @@ class PyLoadUI(QMainWindow):
                 if link["fid"] in fids:
                     print(" ", i + 1, link["fid"], link["statusmsg"], link["url"])
 
-        self.client.delete_files(fids, self.on_files_deleted)
+        self.client.delete_files(self.on_files_deleted, file_ids=fids)
 
         # no. dont trust the server to remove links -> fetch new package data in on_files_deleted
         # also remove links from self.current_package
         # self.current_package["links"] = list(filter(lambda l: l["fid"] not in fids, self.current_package["links"]))
 
-    def on_files_deleted(self, success):
-        if success:
+    def on_files_deleted(self, result):
+        if result is None:
             # QMessageBox.information(self, "Success", "Links removed successfully")
             # Refresh the package data to show changes
             if self.current_package:
                 pid = self.current_package["pid"]
-                self.client.get_package_data(pid, self.on_package_data_received)
+                self.client.get_package_data(self.on_package_data_received, pid)
         else:
-            QMessageBox.warning(self, "Error", "Failed to remove links")
+            QMessageBox.warning(self, "Error", f"Failed to remove links: {result}")
 
     def show_add_package_dialog(self):
         dialog = AddPackageDialog(self)
@@ -714,10 +627,10 @@ class PyLoadUI(QMainWindow):
                 QMessageBox.warning(self, "Error", "No valid links found")
                 return
 
-            self.client.add_package(name, links, self.on_package_added)
+            self.client.add_package(self.on_package_added, name=name, links=links)
 
     def login(self):
-        self.client.login("pyload", "pyload", self.on_login_result)
+        self.client.login(self.on_login_result, username="pyload", password="pyload")
 
     def on_login_result(self, success):
         if success:
@@ -811,7 +724,7 @@ class PyLoadUI(QMainWindow):
 
         # Get package ID from the first column of selected row
         pid = self.packages_table.item(selected_items[0].row(), 0).data(Qt.UserRole)
-        self.client.get_package_data(pid, self.on_package_data_received)
+        self.client.get_package_data(self.on_package_data_received, pid)
 
     def on_package_doubleclicked(self):
         selected_items = self.packages_table.selectedItems()
@@ -834,7 +747,7 @@ class PyLoadUI(QMainWindow):
             subprocess.Popen(args)
 
         pid = self.packages_table.item(selected_items[0].row(), 0).data(Qt.UserRole)
-        self.client.get_package_data(pid, on_package_data_received)
+        self.client.get_package_data(on_package_data_received, pid)
 
 
     def on_package_data_received(self, package_data):
@@ -904,7 +817,7 @@ class PyLoadUI(QMainWindow):
             QMessageBox.warning(self, "Error", "No valid links found")
             return
 
-        self.client.add_package(name, links, self.on_package_added)
+        self.client.add_package(self.on_package_added, name=name, links=links)
 
     def on_package_added(self, success):
         if success:
