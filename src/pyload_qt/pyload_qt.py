@@ -290,53 +290,16 @@ class PyLoadUI(QMainWindow):
 
         self.create_toolbar()
 
-        # Queue table
-        self.queue_table = QTableWidget()
-        self.queue_table.setColumnCount(4)
-        self.queue_table.setHorizontalHeaderLabels([
-            "Pos",
-            "Package name",
-            "Progress",
-            "Size",
-        ])
-        self.queue_table.horizontalHeader().setSectionResizeMode(1, QHeaderView.Stretch)
-        self.queue_table.setSelectionBehavior(QTableWidget.SelectRows)
-        self.queue_table.setSelectionMode(QTableWidget.SingleSelection)
-        self.queue_table.itemSelectionChanged.connect(self.on_package_selected)
-        self.queue_table.itemDoubleClicked.connect(self.on_package_doubleclicked)
-        self.queue_table.setSortingEnabled(True)
-        self.queue_table.verticalHeader().setVisible(False)
-        self.queue_table.horizontalHeaderItem(0).setToolTip("Position")
-        self.queue_table.sortItems(0, Qt.AscendingOrder)
-        self.queue_table.setEditTriggers(QAbstractItemView.NoEditTriggers)
+        self.packages_table = self.create_packages_table()
 
-        # Package contents table
-        self.contents_table = QTableWidget()
-        self.contents_table.setColumnCount(5)
-        self.contents_table.setHorizontalHeaderLabels([
-            "Pos",
-            "Link name",
-            "Plugin",
-            "Status",
-            "Error",
-        ])
-        self.contents_table.horizontalHeader().setSectionResizeMode(
-            1, QHeaderView.Stretch
-        )
-        self.contents_table.setSelectionBehavior(QTableWidget.SelectRows)
-        self.contents_table.setSelectionMode(QTableWidget.ExtendedSelection)
-        self.contents_table.setContextMenuPolicy(Qt.CustomContextMenu)
-        self.contents_table.customContextMenuRequested.connect(self.show_contents_context_menu)
-        self.contents_table.setSortingEnabled(True)
-        self.contents_table.verticalHeader().setVisible(False)
-        self.contents_table.horizontalHeaderItem(0).setToolTip("Position")
-        self.contents_table.sortItems(0, Qt.AscendingOrder)
-        self.contents_table.setEditTriggers(QAbstractItemView.NoEditTriggers)
+        self.package_links_table = None
+
+        self.bottom_view = self.create_bottom_view()
 
         # Splitter for tables
         splitter = QSplitter(Qt.Vertical)
-        splitter.addWidget(self.queue_table)
-        splitter.addWidget(self.contents_table)
+        splitter.addWidget(self.packages_table)
+        splitter.addWidget(self.bottom_view)
         splitter.setSizes([300, 200])
 
         # Add widgets to main layout
@@ -410,6 +373,60 @@ class PyLoadUI(QMainWindow):
 
         # restart symbol = Anticlockwise Open Circle Arrow
         add_text_button("↺", "Restart Failed", self.restart_failed, 18)
+
+    def create_packages_table(self):
+        table = QTableWidget()
+        table.setColumnCount(4)
+        table.setHorizontalHeaderLabels([
+            "Pos",
+            "Package name",
+            "Progress",
+            "Size",
+        ])
+        table.horizontalHeader().setSectionResizeMode(1, QHeaderView.Stretch)
+        table.setSelectionBehavior(QTableWidget.SelectRows)
+        table.setSelectionMode(QTableWidget.SingleSelection)
+        table.itemSelectionChanged.connect(self.on_package_selected)
+        table.itemDoubleClicked.connect(self.on_package_doubleclicked)
+        table.setSortingEnabled(True)
+        table.verticalHeader().setVisible(False)
+        table.horizontalHeaderItem(0).setToolTip("Position")
+        table.sortItems(0, Qt.AscendingOrder)
+        table.setEditTriggers(QAbstractItemView.NoEditTriggers)
+        # TODO filter by search expression (regex?)
+        # TODO select multiple packages -> rightclick -> remove / ...
+        return table
+
+    def create_bottom_view(self):
+        # TODO switch self.bottom_view_checked_button_idx
+        view = self.create_package_links_view()
+        self.package_links_table = view
+        return view
+
+    def create_package_links_view(self):
+        # Package links table
+        table = QTableWidget()
+        table.setColumnCount(5)
+        table.setHorizontalHeaderLabels([
+            "Pos",
+            "Link name",
+            "Plugin",
+            "Status",
+            "Error",
+        ])
+        table.horizontalHeader().setSectionResizeMode(
+            1, QHeaderView.Stretch
+        )
+        table.setSelectionBehavior(QTableWidget.SelectRows)
+        table.setSelectionMode(QTableWidget.ExtendedSelection)
+        table.setContextMenuPolicy(Qt.CustomContextMenu)
+        table.customContextMenuRequested.connect(self.show_package_links_context_menu)
+        table.setSortingEnabled(True)
+        table.verticalHeader().setVisible(False)
+        table.horizontalHeaderItem(0).setToolTip("Position")
+        table.sortItems(0, Qt.AscendingOrder)
+        table.setEditTriggers(QAbstractItemView.NoEditTriggers)
+        return table
 
     def create_bottom_view_button_group(self, main_layout):
         self.bottom_view_button_group = group = QButtonGroup(self)
@@ -495,20 +512,20 @@ class PyLoadUI(QMainWindow):
         cb = lambda *a: print("restart_failed: done")
         self.client.restart_failed(cb)
 
-    def show_contents_context_menu(self, position):
-        selected_rows = set(index.row() for index in self.contents_table.selectedIndexes())
+    def show_package_links_context_menu(self, position):
+        selected_rows = set(index.row() for index in self.package_links_table.selectedIndexes())
         if not selected_rows:
             return
 
         menu = QMenu()
         remove_action = menu.addAction("Remove Links")
-        action = menu.exec(self.contents_table.viewport().mapToGlobal(position))
+        action = menu.exec(self.package_links_table.viewport().mapToGlobal(position))
 
         if action == remove_action:
             self.remove_selected_links()
 
     def remove_selected_links(self):
-        selected_rows = set(index.row() for index in self.contents_table.selectedIndexes())
+        selected_rows = set(index.row() for index in self.package_links_table.selectedIndexes())
         if not selected_rows:
             return
 
@@ -577,19 +594,19 @@ class PyLoadUI(QMainWindow):
             QMessageBox.warning(self, "Error", "Could not fetch queue")
             return
 
-        self.queue_table.setRowCount(len(queue_data))
+        self.packages_table.setRowCount(len(queue_data))
         for row, package in enumerate(queue_data):
             col = 0
 
             # Position
             position_item = SortKeyTableWidgetItem(str(row + 1), (row + 1))
             position_item.setData(Qt.UserRole, package["pid"])  # Store package ID
-            self.queue_table.setItem(row, col, position_item)
+            self.packages_table.setItem(row, col, position_item)
             col += 1
 
             # Name
             name_item = QTableWidgetItem(package["name"])
-            self.queue_table.setItem(row, col, name_item)
+            self.packages_table.setItem(row, col, name_item)
             col += 1
 
             # Progress
@@ -599,31 +616,31 @@ class PyLoadUI(QMainWindow):
             else:
                 progress = 0
                 progress_text = "0.0%"
-            # self.queue_table.setItem(row, 1, QTableWidgetItem(progress_text))
+            # self.packages_table.setItem(row, 1, QTableWidgetItem(progress_text))
             progress_item = SortKeyTableWidgetItem(progress_text, progress)
-            self.queue_table.setItem(row, col, progress_item)
+            self.packages_table.setItem(row, col, progress_item)
             col += 1
 
             # Size
             size = package["sizetotal"]
             size_mb = package["sizetotal"] / (1024 * 1024)
             size_text = f"{size_mb:.2f} MB"
-            # self.queue_table.setItem(row, 2, QTableWidgetItem(size_text))
+            # self.packages_table.setItem(row, 2, QTableWidgetItem(size_text))
             size_item = SortKeyTableWidgetItem(size_text, size)
-            self.queue_table.setItem(row, col, size_item)
+            self.packages_table.setItem(row, col, size_item)
             col += 1
 
     def on_package_selected(self):
-        selected_items = self.queue_table.selectedItems()
+        selected_items = self.packages_table.selectedItems()
         if not selected_items:
             return
 
         # Get package ID from the first column of selected row
-        pid = self.queue_table.item(selected_items[0].row(), 0).data(Qt.UserRole)
+        pid = self.packages_table.item(selected_items[0].row(), 0).data(Qt.UserRole)
         self.client.get_package_data(pid, self.on_package_data_received)
 
     def on_package_doubleclicked(self):
-        selected_items = self.queue_table.selectedItems()
+        selected_items = self.packages_table.selectedItems()
         if not selected_items:
             return
         if not self.client.is_localhost: return
@@ -642,18 +659,18 @@ class PyLoadUI(QMainWindow):
             ]
             subprocess.Popen(args)
 
-        pid = self.queue_table.item(selected_items[0].row(), 0).data(Qt.UserRole)
+        pid = self.packages_table.item(selected_items[0].row(), 0).data(Qt.UserRole)
         self.client.get_package_data(pid, on_package_data_received)
 
 
     def on_package_data_received(self, package_data):
         if package_data is None:
-            self.contents_table.setRowCount(0)
+            self.package_links_table.setRowCount(0)
             return
 
         self.current_package = package_data
         links = package_data.get("links", [])
-        self.contents_table.setRowCount(len(links))
+        self.package_links_table.setRowCount(len(links))
 
         for row, link in enumerate(links):
             col = 0
@@ -661,25 +678,25 @@ class PyLoadUI(QMainWindow):
             # Position
             position_item = SortKeyTableWidgetItem(str(row + 1), (row + 1))
             position_item.setData(Qt.UserRole, link["fid"])  # Store file ID
-            self.contents_table.setItem(row, col, position_item)
+            self.package_links_table.setItem(row, col, position_item)
             col += 1
 
             # Filename
-            self.contents_table.setItem(row, col, QTableWidgetItem(link["name"]))
+            self.package_links_table.setItem(row, col, QTableWidgetItem(link["name"]))
             col += 1
 
             # Plugin
-            self.contents_table.setItem(row, col, QTableWidgetItem(link["plugin"]))
+            self.package_links_table.setItem(row, col, QTableWidgetItem(link["plugin"]))
             col += 1
 
             # Status
             # todo? map from link["status"] to custom order
             status_item = SortKeyTableWidgetItem(link["statusmsg"], link["status"])
-            self.contents_table.setItem(row, col, status_item)
+            self.package_links_table.setItem(row, col, status_item)
             col += 1
 
             # Error
-            self.contents_table.setItem(row, col, QTableWidgetItem(link["error"]))
+            self.package_links_table.setItem(row, col, QTableWidgetItem(link["error"]))
             col += 1
 
     def add_package(self):
