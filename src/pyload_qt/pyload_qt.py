@@ -7,6 +7,7 @@ import json
 import re
 import subprocess
 import urllib.parse
+import datetime
 from PySide6.QtWidgets import (
     QApplication,
     QMainWindow,
@@ -200,7 +201,10 @@ class PyLoadUI(QMainWindow):
         self.login()
         self.refresh_interval = 5 # refresh every 5 seconds
         self.init_refresh_timer()
+        self.selected_package_pid = None
+        self.package_files_subdir = ""
         self._debug_remove_links = False
+        self._debug_package_data = False
 
     def init_ui(self):
         self.setWindowTitle("pyLoad")
@@ -475,7 +479,92 @@ class PyLoadUI(QMainWindow):
             col += 1
 
     def create_package_files_view(self):
-        return QLabel("TODO files view")
+        table = QTableWidget(parent=self)
+        column_labels = [
+            "File",
+            "Size",
+            "Modified",
+        ]
+        table.setColumnCount(len(column_labels))
+        table.setHorizontalHeaderLabels(column_labels)
+        table.horizontalHeader().setSectionResizeMode(0, QHeaderView.Stretch)
+        # TODO increase width of the "Modified" column. make room for YYYY-mm-dd HH:mm:ss
+        table.setColumnWidth(2, 135)
+        table.setSelectionBehavior(QTableWidget.SelectRows)
+        # table.setSelectionMode(QTableWidget.SingleSelection)
+        # table.itemSelectionChanged.connect(self.on_package_selected)
+        table.itemDoubleClicked.connect(self.on_package_files_view_file_doubleclicked)
+        table.setSortingEnabled(True)
+        table.verticalHeader().setVisible(False)
+        table.sortItems(0, Qt.AscendingOrder)
+        table.setEditTriggers(QAbstractItemView.NoEditTriggers)
+        # TODO filter by search expression (regex?)
+        return table
+
+    def on_package_files_view_file_doubleclicked(self):
+        print("todo handle file doubleclicked")
+        table = self.package_files_view
+
+    def update_package_files_view(self):
+        if not self.current_package:
+            print("update_package_files_view: no self.current_package")
+            return
+        pid = self.selected_package_pid
+        subdir = self.package_files_subdir
+        self.client.get_package_folder_files(self.on_package_files_data, package_id=pid, subdir=subdir)
+
+    def on_package_files_data(self, file_details_list):
+        # print(f"file_details_list {json.dumps(file_details_list, indent=2)}")
+        table = self.package_files_view
+        if file_details_list is None:
+            # this can happen when the folder does not exist
+            table.setRowCount(0)
+            return
+        # table.setRowCount(0)
+        # FIXME sometimes size and modified values are not rendered
+        # but they are rendered later on table resize (repaint)
+        _debug_package_files_view = False
+        if _debug_package_files_view:
+            print("on_package_files_data")
+        table.setRowCount(len(file_details_list))
+        # TODO add "../" special file in subdirs
+        # if self.package_files_subdir != ""
+        for row, file_details in enumerate(file_details_list):
+            col = 0
+
+            is_dir = (file_details["type"][0] == "d")
+
+            # File name
+            name = file_details["name"]
+            if is_dir:
+                name += "/"
+            item = QTableWidgetItem(name)
+            table.setItem(row, col, item)
+            col += 1
+
+            # Size
+            if is_dir:
+                size = 0
+                size_text = ""
+            else:
+                size = file_details["size"]
+                size_mb = size / (1024 * 1024)
+                size_text = f"{size_mb:.2f} MB"
+            # item = SortKeyTableWidgetItem(size_text, size)
+            item = QTableWidgetItem(size_text)
+            table.setItem(row, col, item)
+            col += 1
+
+            # Modified
+            mtime = file_details["mtime"]
+            mtime_text = datetime.datetime.fromtimestamp(mtime).strftime("%F %T")
+            item = QTableWidgetItem(mtime_text)
+            table.setItem(row, col, item)
+            col += 1
+
+            if _debug_package_files_view:
+                print(" ", file_details["type"][0], mtime_text, (size_text or "0.00 MB"), name)
+
 
     def create_bottom_view_button_group(self, main_layout):
         self.bottom_view_button_group = group = QButtonGroup(self)
@@ -567,6 +656,7 @@ class PyLoadUI(QMainWindow):
             self.remove_selected_links()
 
     def remove_selected_links(self):
+        # FIXME update package progress after removing files (links)
         table = self.package_links_table
         fids = []
         for item in table.selectedItems():
@@ -612,6 +702,7 @@ class PyLoadUI(QMainWindow):
             # Refresh the package data to show changes
             if self.current_package:
                 pid = self.current_package["pid"]
+                assert pid # TODO can this be None?
                 self.client.get_package_data(self.on_package_data_received, pid)
         else:
             QMessageBox.warning(self, "Error", f"Failed to remove links: {result}")
@@ -647,15 +738,17 @@ class PyLoadUI(QMainWindow):
         self.refresh_bottom_view()
 
     def refresh_bottom_view(self):
+        pid = self.selected_package_pid
         bottom_view_idx = self.get_bottom_view_idx()
         if bottom_view_idx == self.BottomViewIdx.Package:
             pass
         elif bottom_view_idx == self.BottomViewIdx.Links:
-            pass
+            if pid:
+                self.client.get_package_data(self.on_package_data_received, pid)
         elif bottom_view_idx == self.BottomViewIdx.Downloads:
             self.refresh_package_downloads_view()
         elif bottom_view_idx == self.BottomViewIdx.Files:
-            pass
+            self.update_package_files_view()
 
         # TODO refresh status
         """
@@ -677,6 +770,13 @@ class PyLoadUI(QMainWindow):
         self.client.get_queue(self.on_queue_received)
 
     def on_queue_received(self, queue_data):
+        self.debug_pid = None
+        if self.debug_pid:
+            for pkg in queue_data:
+                if pkg["pid"] == self.debug_pid:
+                    print(f"on_queue_received pkg {self.debug_pid} = {json.dumps(pkg, indent=2)}")
+                    break
+        self.queue_data_cache = queue_data
         if queue_data is None:
             QMessageBox.warning(self, "Error", "Could not fetch queue")
             return
@@ -724,7 +824,9 @@ class PyLoadUI(QMainWindow):
 
         # Get package ID from the first column of selected row
         pid = self.packages_table.item(selected_items[0].row(), 0).data(Qt.UserRole)
-        self.client.get_package_data(self.on_package_data_received, pid)
+        assert pid # TODO can this be None?
+        self.selected_package_pid = pid
+        self.refresh_bottom_view()
 
     def on_package_doubleclicked(self):
         selected_items = self.packages_table.selectedItems()
@@ -747,6 +849,7 @@ class PyLoadUI(QMainWindow):
             subprocess.Popen(args)
 
         pid = self.packages_table.item(selected_items[0].row(), 0).data(Qt.UserRole)
+        assert pid # TODO can this be None?
         self.client.get_package_data(on_package_data_received, pid)
 
 
@@ -754,6 +857,15 @@ class PyLoadUI(QMainWindow):
         if package_data is None:
             self.package_links_table.setRowCount(0)
             return
+        if self._debug_package_data:
+            for pkg in self.queue_data_cache:
+                if pkg["pid"] == package_data["pid"]:
+                    print(f"on_package_data_received: queue_data[] = {json.dumps(pkg, indent=2)}")
+                    break
+            print(f"on_package_data_received: package_data = {json.dumps(package_data, indent=2)}")
+            if package_data is None:
+                self.package_links_table.setRowCount(0)
+                return
 
         self.current_package = package_data
 
@@ -770,6 +882,8 @@ class PyLoadUI(QMainWindow):
 
         links = package_data.get("links", [])
         self.package_links_table.setRowCount(len(links))
+
+        # FIXME this can produce broken tables with duplicate position values
 
         for row, link in enumerate(links):
             col = 0
@@ -795,6 +909,7 @@ class PyLoadUI(QMainWindow):
             col += 1
 
             # Error
+            # TODO add tooltip with full error message
             self.package_links_table.setItem(row, col, QTableWidgetItem(link["error"]))
             col += 1
 
