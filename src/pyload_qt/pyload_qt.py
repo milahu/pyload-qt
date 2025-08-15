@@ -660,9 +660,8 @@ class PyLoadUI(QMainWindow):
         table = self.package_links_table
         fids = []
         for item in table.selectedItems():
-            # position_item.setData(Qt.UserRole, link["fid"])  # Store file ID
-            # Get file ID from selected row
-            fid = table.item(item.row(), 0).data(Qt.UserRole)
+            if item.column() != 0: continue
+            fid = item.data(Qt.UserRole)
             fids.append(fid)
 
         if not fids:
