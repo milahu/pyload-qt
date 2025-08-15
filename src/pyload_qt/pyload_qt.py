@@ -28,6 +28,7 @@ from PySide6.QtWidgets import (
     QVBoxLayout,
     QAbstractItemView,
     QButtonGroup,
+    QStackedWidget,
 )
 from PySide6.QtCore import Qt, QUrl
 from PySide6.QtNetwork import QNetworkAccessManager, QNetworkRequest, QNetworkReply
@@ -304,6 +305,16 @@ class PyLoadUI(QMainWindow):
         # Add widgets to main layout
         main_layout.addWidget(splitter)
 
+        self.bottom_view_names = [
+            "Package",
+            "Links",
+            "Downloads",
+            "Files",
+        ]
+
+        self.default_bottom_view_name = "Links"
+        self.default_bottom_view_idx = self.bottom_view_names.index(self.default_bottom_view_name)
+
         self.create_bottom_view_button_group(main_layout)
         self.bottom_view = self.create_bottom_view()
 
@@ -402,16 +413,25 @@ class PyLoadUI(QMainWindow):
         return table
 
     def create_bottom_view(self):
-        if self.bottom_view_idx == self.BottomViewIdx.Package:
-            raise "todo"
-        elif self.bottom_view_idx == self.BottomViewIdx.Links:
-            view = self.create_package_links_view()
-            self.package_links_table = view
-        elif self.bottom_view_idx == self.BottomViewIdx.Downloads:
-            raise "todo"
-        elif self.bottom_view_idx == self.BottomViewIdx.Files:
-            raise "todo"
-        return view
+        self.bottom_view_stack = stack = QStackedWidget()
+        for view_name in self.bottom_view_names:
+            if view_name == "Package":
+                self.package_package_view = view = self.create_package_package_view()
+            elif view_name == "Links":
+                self.package_links_table = view = self.create_package_links_view()
+            elif view_name == "Downloads":
+                self.package_downloads_view = view = self.create_package_downloads_view()
+            elif view_name == "Files":
+                self.package_files_view = view = self.create_package_files_view()
+            stack.addWidget(view)
+        stack.setCurrentIndex(self.default_bottom_view_idx)
+        return stack
+
+    def set_bottom_view_idx(self, bottom_view_idx):
+        self.bottom_view_stack.setCurrentIndex(bottom_view_idx)
+
+    def create_package_package_view(self):
+        return QLabel("TODO package view")
 
     def create_package_links_view(self):
         # Package links table
@@ -438,6 +458,12 @@ class PyLoadUI(QMainWindow):
         table.setEditTriggers(QAbstractItemView.NoEditTriggers)
         return table
 
+    def create_package_downloads_view(self):
+        return QLabel("TODO downloads view")
+
+    def create_package_files_view(self):
+        return QLabel("TODO files view")
+
     def create_bottom_view_button_group(self, main_layout):
         self.bottom_view_button_group = group = QButtonGroup(self)
         widget = QWidget()
@@ -460,20 +486,10 @@ class PyLoadUI(QMainWindow):
 
         button_idx = -1
 
-        bottom_view_names = [
-            "Package",
-            "Links",
-            "Downloads",
-            "Files",
-        ]
-
-        default_bottom_view_name = "Links"
-        assert default_bottom_view_name in bottom_view_names
-
-        for name in bottom_view_names:
+        for name in self.bottom_view_names:
             button_idx += 1
             button = add_button(button_idx, name)
-            if name == default_bottom_view_name:
+            if name == self.default_bottom_view_name:
                 # this button is checked
                 button.setChecked(True)
                 self.bottom_button_checked_id = group.id(button)
@@ -492,15 +508,16 @@ class PyLoadUI(QMainWindow):
     def toggle_bottom_view(self, clicked_button_idx):
         clicked_button = self.bottom_view_button_list[clicked_button_idx]
         if clicked_button_idx == self.bottom_view_idx:
-            print(f"TODO hide bottom view")
             self.bottom_view_button_group.setExclusive(False)
             clicked_button.setChecked(False)
             self.bottom_view_idx = None
+            self.bottom_view.hide()
         else:
-            print(f"TODO show bottom view {clicked_button_idx}")
             clicked_button.setChecked(True)
             self.bottom_view_button_group.setExclusive(True)
             self.bottom_view_idx = clicked_button_idx
+            self.bottom_view.show()
+            self.set_bottom_view_idx(clicked_button_idx)
 
     def start_downloads(self):
         cb = lambda *a: print("start_downloads: done")
