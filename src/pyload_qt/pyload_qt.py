@@ -44,6 +44,8 @@ from PySide6.QtGui import (
 )
 NetworkError = QNetworkReply.NetworkError
 
+# from QTermWidget import QTermWidget
+
 
 class PyLoadClient:
     def __init__(self):
@@ -166,6 +168,28 @@ class AddPackageDialog(QDialog):
         return name, links, password
 
 
+# https://github.com/lxqt/qtermwidget/blob/master/examples/pyqt/main.py
+"""
+class Terminal(QTermWidget):
+    def __init__(self, process: str, args: list):
+        super().__init__(0)
+        self.finished.connect(self.close)
+        self.setTerminalSizeHint(False)
+        self.setColorScheme("DarkPastels")
+        self.setShellProgram(process)
+        self.setArgs(args)
+        self.startShellProgram()
+        self.show()
+
+
+if __name__ == "__main__":
+    app = QtWidgets.QApplication([])
+    args = ["--clean", "--noplugin"]
+    term = Terminal("vim", args)
+    app.exec()
+"""
+
+
 # https://stackoverflow.com/a/2304495/10440128
 class SortKeyTableWidgetItem(QTableWidgetItem):
     def __init__(self, text, sortKey):
@@ -250,6 +274,7 @@ class PyLoadUI(QMainWindow):
             "Links",
             "Downloads",
             "Files",
+            "Terminal",
         ]
 
         self.default_bottom_view_name = "Links"
@@ -398,9 +423,58 @@ class PyLoadUI(QMainWindow):
                 self.package_downloads_view = view = self.create_package_downloads_view()
             elif view_name == "Files":
                 self.package_files_view = view = self.create_package_files_view()
+            elif view_name == "Terminal":
+                self.terminal_view = view = self.create_terminal_view()
             stack.addWidget(view)
         stack.setCurrentIndex(self.default_bottom_view_idx)
         return stack
+
+    def create_terminal_view(self):
+        # wontfix? not working with pyside6
+        # TypeError: 'PySide6.QtWidgets.QStackedWidget.addWidget' called with wrong argument types
+        r"""
+        # https://github.com/lxqt/qtermwidget/blob/master/examples/pyqt/main.py
+        term = QTermWidget(0)
+        # term.finished.connect(term.close)
+        term.setTerminalSizeHint(False)
+        term.setColorScheme("DarkPastels")
+        # term.setShellProgram("python3")
+        term.setShellProgram(sys.argv[0])
+        term.setArgs([])
+        term.startShellProgram()
+        # term.show()
+        return term
+        """
+
+        from qtpyTerminal import qtpyTerminal
+
+        # Create the Qt application and console.
+        """
+        app = QtWidgets.QApplication([])
+        mainwin = QtWidgets.QMainWindow()
+        mainwin.setWindowTitle("qtpyTerminal example")
+        container = QtWidgets.QWidget(mainwin)
+        container.setLayout(QtWidgets.QVBoxLayout())
+        mainwin.setCentralWidget(container)
+        term = qtpyTerminal(mainwin)
+        """
+        term = qtpyTerminal(self)
+
+        def exit():
+          term.stop()
+          # app.quit()
+        """
+        start_button = QtWidgets.QPushButton("Start shell", container)
+        start_button.clicked.connect(term.start)
+        container.layout().addWidget(start_button)
+        container.layout().addWidget(term)
+        quit_button = QtWidgets.QPushButton("Quit", container)
+        quit_button.clicked.connect(exit)
+        container.layout().addWidget(quit_button)
+        """
+        term.set_cmd(sys.executable) # python
+        term.start()
+        return term
 
     def get_bottom_view_idx(self):
         return self.bottom_view_stack.currentIndex()
