@@ -38,6 +38,7 @@ from PySide6.QtNetwork import QNetworkAccessManager, QNetworkRequest, QNetworkRe
 from PySide6.QtGui import QIcon, QScreen
 from PySide6.QtGui import QAction, QKeySequence
 from PySide6.QtGui import QFont
+NetworkError = QNetworkReply.NetworkError
 
 
 class PyLoadClient:
@@ -51,31 +52,6 @@ class PyLoadClient:
         self.is_localhost = True
         self.session_cookie = None
         self.func_cache = {}
-        self.config_path = None
-        self.config = {}
-        if self.is_localhost:
-            # FIXME this is the default config path, it can be different
-            self.config_path = "~/.pyload/settings/pyload.cfg"
-            self.parse_config()
-
-    def parse_config(self):
-        with open(os.path.expanduser(self.config_path)) as f:
-            group = None
-            for line in f.readlines():
-                line = line.rstrip()
-                # print(f"line {line!r}")
-                if line.startswith("version:"): continue
-                elif line == "": continue
-                elif line[0] == "\t":
-                    m = re.fullmatch(r'\t([0-9a-zA-Z_;]+) ([0-9a-zA-Z_]+) : "[^"]+" = ?(.*)', line)
-                    _type, key, val = m.groups()
-                    if _type == "bool": val = True if val == "True" else False
-                    elif _type == "int": val = int(val)
-                    group[key] = val
-                else:
-                    m = re.fullmatch(r'([0-9a-zA-Z_]+) - "[^"]+":', line)
-                    key = m.group(1)
-                    group = self.config[key] = dict()
 
     # https://stackoverflow.com/questions/13194180/dynamic-method-generation-in-python
     def __getattr__(self, name):
@@ -773,9 +749,29 @@ class PyLoadUI(QMainWindow):
 
     def on_login_result(self, success):
         if success:
+            self.get_config()
             self.refresh_queue()
         else:
             QMessageBox.critical(self, "Login Failed", "Could not login to pyLoad")
+
+    def get_config(self):
+        self.client.get_config(self.on_config)
+
+    def on_config(self, config):
+        if isinstance(config, NetworkError):
+            print("on_config error", config)
+            return
+        # print("on_config", json.dumps(config, indent=2))
+        self.config = config
+
+    def get_config_value(self, scope, key):
+        scope_obj = self.config.get(scope)
+        if scope_obj is None: raise KeyError(scope)
+        for item in scope_obj["items"]:
+            if item["name"] == key:
+                return item["value"]
+        # item was not found in scope
+        raise KeyError(f"{scope}.{key}")
 
     def init_refresh_timer(self):
         self.refresh_timer = timer = QTimer()
@@ -882,7 +878,7 @@ class PyLoadUI(QMainWindow):
             return
         if not self.client.is_localhost: return
 
-        storage_folder = self.client.config["general"]["storage_folder"]
+        storage_folder = self.get_config_value("general", "storage_folder")
 
         def on_package_data_received(package_data):
             # print(f"on_package_doubleclicked package_data {package_data}")
