@@ -198,9 +198,34 @@ class PyLoadUI(QMainWindow):
         self.setGeometry(100, 100, 800, 600)
         self.setWindowIcon(QIcon(os.path.dirname(__file__) + "/pyload-logo.png"))
 
+        # - root_widget: parent
+        #   - sidebar_widget: sidebar
+        #   - main_widget: main content
+        # https://stackoverflow.com/a/56086494/10440128
+
+        # root widget
+        root_widget = QWidget()
+        self.setCentralWidget(root_widget)
+        root_layout = QHBoxLayout(root_widget)
+        # root_widget.setLayout(root_layout)
+
+        splitter = QSplitter(Qt.Horizontal)
+        root_layout.addWidget(splitter)
+
+        self.sidebar_widget = self.create_sidebar_widget()
+        self.main_widget = self.create_main_widget()
+        splitter.addWidget(self.sidebar_widget)
+        splitter.addWidget(self.main_widget)
+
+        splitter.setSizes([40, 200])
+
+    def create_sidebar_widget(self):
+        return QLabel("TODO sidebar")
+
+    def create_main_widget(self):
         # Main widget and layout
         main_widget = QWidget()
-        self.setCentralWidget(main_widget)
+        # self.setCentralWidget(main_widget) # -> root_widget
         main_layout = QVBoxLayout(main_widget)
 
         self.create_menu()
@@ -233,6 +258,8 @@ class PyLoadUI(QMainWindow):
         splitter.addWidget(self.packages_table)
         splitter.addWidget(self.bottom_view)
         splitter.setSizes([300, 200])
+
+        return main_widget
 
     def create_menu(self):
         self.menu = self.menuBar()
