@@ -302,13 +302,15 @@ class PyLoadUI(QMainWindow):
 
     def create_packages_table(self):
         table = QTableWidget()
-        table.setColumnCount(4)
-        table.setHorizontalHeaderLabels([
+        column_labels = [
             "Pos",
             "Package name",
+            "Status",
             "Progress",
             "Size",
-        ])
+        ]
+        table.setColumnCount(len(column_labels))
+        table.setHorizontalHeaderLabels(column_labels)
         table.horizontalHeader().setSectionResizeMode(1, QHeaderView.Stretch)
         table.setSelectionBehavior(QTableWidget.SelectRows)
         table.setSelectionMode(QTableWidget.SingleSelection)
@@ -811,9 +813,31 @@ class PyLoadUI(QMainWindow):
         """
 
     def refresh_queue(self):
+        self._queue_data = None
+        self._collector_data = None
         self.client.get_queue(self.on_queue_received)
+        self.client.get_collector(self.on_collector_received)
 
     def on_queue_received(self, queue_data):
+        self._queue_data = queue_data
+        # print("queue_data", json.dumps(queue_data, indent=2)[0:1000] + " ...")
+        # FIXME handle failing requests (timeouts, ...)
+        if self._queue_data and self._collector_data:
+            self.on_queue_and_collector_received(self._queue_data, self._collector_data)
+
+    def on_collector_received(self, collector_data):
+        self._collector_data = collector_data
+        # print("collector_data", json.dumps(collector_data, indent=2)[0:1000] + " ...")
+        # FIXME handle failing requests (timeouts, ...)
+        if self._queue_data and self._collector_data:
+            self.on_queue_and_collector_received(self._queue_data, self._collector_data)
+
+    def on_queue_and_collector_received(self, queue_data, collector_data):
+        # FIXME handle failed requests
+        queue_data = (
+            [{**p, "queue": True} for p in queue_data] +
+            [{**p, "queue": False} for p in collector_data]
+        )
         self.debug_pid = None
         if self.debug_pid:
             for pkg in queue_data:
@@ -838,6 +862,12 @@ class PyLoadUI(QMainWindow):
             # Name
             name_item = QTableWidgetItem(package["name"])
             self.packages_table.setItem(row, col, name_item)
+            col += 1
+
+            # Status: Queue or Collector
+            status_str = "Active" if package["queue"] else "Paused"
+            item = QTableWidgetItem(status_str)
+            self.packages_table.setItem(row, col, item)
             col += 1
 
             # Progress
