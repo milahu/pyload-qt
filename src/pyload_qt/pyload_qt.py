@@ -160,6 +160,13 @@ class AddPackageDialog(QDialog):
         self.links_input = QTextEdit()
         layout.addWidget(self.links_input)
 
+        # Package password
+        password_layout = QHBoxLayout()
+        password_layout.addWidget(QLabel("Password:"))
+        self.package_password_input = QLineEdit()
+        password_layout.addWidget(self.package_password_input)
+        layout.addLayout(password_layout)
+
         # Buttons
         button_layout = QHBoxLayout()
         self.add_button = QPushButton("Add Package")
@@ -175,7 +182,8 @@ class AddPackageDialog(QDialog):
         links_text = self.links_input.toPlainText().strip()
         url_pattern = re.compile(r'https?://[^\s<>"]+|www\.[^\s<>"]+')
         links = url_pattern.findall(links_text)
-        return name, links
+        password = self.package_password_input.text().strip()
+        return name, links, password
 
 
 # https://stackoverflow.com/a/2304495/10440128
@@ -736,7 +744,7 @@ class PyLoadUI(QMainWindow):
     def show_add_package_dialog(self):
         dialog = AddPackageDialog(self)
         if dialog.exec() == QDialog.Accepted:
-            name, links = dialog.get_package_data()
+            name, links, password = dialog.get_package_data()
             if not name:
                 QMessageBox.warning(self, "Error", "Package name cannot be empty")
                 return
@@ -744,7 +752,21 @@ class PyLoadUI(QMainWindow):
                 QMessageBox.warning(self, "Error", "No valid links found")
                 return
 
-            self.client.add_package(self.on_package_added, name=name, links=links)
+            if password:
+                def on_package_added(pid):
+                    print(f"on_package_added {pid} -> calling set_package_data")
+                    package_data = dict(password=password)
+                    def on_set_package_data(res):
+                        # TODO check res for errors
+                        self.on_package_added(pid)
+                    self.client.set_package_data(
+                        on_set_package_data,
+                        package_id=pid,
+                        data=package_data
+                    )
+                pid = self.client.add_package(on_package_added, name=name, links=links)
+            else:
+                self.client.add_package(self.on_package_added, name=name, links=links)
 
     def login(self):
         self.client.login(self.on_login_result, username="pyload", password="pyload")
@@ -959,8 +981,8 @@ class PyLoadUI(QMainWindow):
 
         self.client.add_package(self.on_package_added, name=name, links=links)
 
-    def on_package_added(self, success):
-        if success:
+    def on_package_added(self, pid):
+        if pid:
             QMessageBox.information(self, "Success", "Package added successfully")
             self.refresh_queue()
         else:
