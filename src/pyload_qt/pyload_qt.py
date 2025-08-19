@@ -31,6 +31,7 @@ from PySide6.QtWidgets import (
     QAbstractItemView,
     QButtonGroup,
     QStackedWidget,
+    QSizePolicy,
 )
 from PySide6.QtCore import Qt, QUrl
 from PySide6.QtCore import QTimer
@@ -299,6 +300,37 @@ class PyLoadUI(QMainWindow):
 
         # restart symbol = Anticlockwise Open Circle Arrow
         add_text_button("↺", "Restart Failed", self.restart_failed, 18)
+
+        spacer = QWidget()
+        spacer.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
+        self.toolbar.addWidget(spacer)
+
+        # https://gist.github.com/chipolux/a600d2a31b6811d553651822f89c9e39
+        # pyqt debounced text input
+        self.package_filter_input = QLineEdit()
+        self.package_filter_input.setClearButtonEnabled(True)
+        self.package_filter_input.setToolTip("Regex for Package names")
+        self.package_filter_debounce = QTimer()
+        self.package_filter_debounce.setInterval(1000)
+        self.package_filter_debounce.setSingleShot(True)
+        self.package_filter_debounce.timeout.connect(self.on_package_filter_change)
+        self.package_filter_input.textChanged.connect(self.package_filter_debounce.start)
+        self.toolbar.addWidget(self.package_filter_input)
+
+    def on_package_filter_change(self):
+        filter_text = self.package_filter_input.text().strip()
+        print("on_package_filter_change", repr(filter_text))
+        table = self.packages_table
+        if not filter_text:
+            # show all rows
+            for row_idx in range(table.rowCount()):
+                table.setRowHidden(row_idx, False)
+        # https://stackoverflow.com/a/6785516/10440128
+        regex = re.compile(filter_text, re.I)
+        for row_idx in range(table.rowCount()):
+            col_idx = 1
+            package_name = table.item(row_idx, col_idx).text()
+            table.setRowHidden(row_idx, not(bool(regex.search(package_name))))
 
     def create_packages_table(self):
         table = QTableWidget()
