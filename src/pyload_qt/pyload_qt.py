@@ -39,6 +39,9 @@ from PySide6.QtNetwork import QNetworkAccessManager, QNetworkRequest, QNetworkRe
 from PySide6.QtGui import QIcon, QScreen
 from PySide6.QtGui import QAction, QKeySequence
 from PySide6.QtGui import QFont
+from PySide6.QtGui import (
+    QClipboard,
+)
 NetworkError = QNetworkReply.NetworkError
 
 
@@ -721,11 +724,29 @@ class PyLoadUI(QMainWindow):
             return
 
         menu = QMenu()
+        copy_action = menu.addAction("Copy Links")
         remove_action = menu.addAction("Remove Links")
         action = menu.exec(self.package_links_table.viewport().mapToGlobal(position))
 
-        if action == remove_action:
+        if action == copy_action:
+            self.copy_selected_links()
+        elif action == remove_action:
             self.remove_selected_links()
+
+    def copy_selected_links(self):
+        table = self.package_links_table
+        links = []
+        for item in table.selectedItems():
+            if item.column() != 1: continue
+            link = item.data(Qt.UserRole) # get file URL
+            links.append(link)
+        self.set_clipboard("".join(map(lambda s: s + "\n", links)))
+
+    def set_clipboard(self, text):
+        # https://stackoverflow.com/a/23119741/10440128
+        cb = QApplication.clipboard()
+        cb.clear(mode=QClipboard.Clipboard)
+        cb.setText(text, mode=QClipboard.Clipboard)
 
     def remove_selected_links(self):
         # FIXME update package progress after removing files (links)
@@ -1005,7 +1026,9 @@ class PyLoadUI(QMainWindow):
             col += 1
 
             # Filename
-            self.package_links_table.setItem(row, col, QTableWidgetItem(link["name"]))
+            item = QTableWidgetItem(link["name"])
+            item.setData(Qt.UserRole, link["url"])  # Store file URL
+            self.package_links_table.setItem(row, col, item)
             col += 1
 
             # Plugin
