@@ -872,31 +872,9 @@ class PyLoadUI(QMainWindow):
         """
 
     def refresh_queue(self):
-        self._queue_data = None
-        self._collector_data = None
-        self.client.get_queue(self.on_queue_received)
-        self.client.get_collector(self.on_collector_received)
+        self.client.get_queue_and_collector(self.on_queue_and_collector_received)
 
-    def on_queue_received(self, queue_data):
-        self._queue_data = queue_data
-        # print("queue_data", json.dumps(queue_data, indent=2)[0:1000] + " ...")
-        # FIXME handle failing requests (timeouts, ...)
-        if self._queue_data and self._collector_data:
-            self.on_queue_and_collector_received(self._queue_data, self._collector_data)
-
-    def on_collector_received(self, collector_data):
-        self._collector_data = collector_data
-        # print("collector_data", json.dumps(collector_data, indent=2)[0:1000] + " ...")
-        # FIXME handle failing requests (timeouts, ...)
-        if self._queue_data and self._collector_data:
-            self.on_queue_and_collector_received(self._queue_data, self._collector_data)
-
-    def on_queue_and_collector_received(self, queue_data, collector_data):
-        # FIXME handle failed requests
-        queue_data = (
-            [{**p, "queue": True} for p in queue_data] +
-            [{**p, "queue": False} for p in collector_data]
-        )
+    def on_queue_and_collector_received(self, queue_data):
         self.debug_pid = None
         if self.debug_pid:
             for pkg in queue_data:
