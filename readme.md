@@ -1,6 +1,6 @@
 # pyload-qt
 
-Qt interface for [pyLoad](https://github.com/milahu/pyload)
+a Qt interface for [pyLoad](https://github.com/milahu/pyload),
 trying to look like [qBittorrent](https://github.com/qbittorrent/qBittorrent)
 
 ## why
