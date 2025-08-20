@@ -1017,7 +1017,15 @@ class PyLoadUI(QMainWindow):
         elif bottom_view_idx == self.BottomViewIdx.Downloads:
             self.refresh_package_downloads_view()
         elif bottom_view_idx == self.BottomViewIdx.Files:
-            self.update_package_files_view()
+            if pid:
+                # TODO refactor
+                def on_package_data_received(res):
+                    self.current_package = res
+                    self.update_package_files_view()
+                self.client.get_package_data(on_package_data_received, pid)
+            else:
+                # no package selected
+                self.update_package_files_view()
 
         # TODO refresh status
         """
