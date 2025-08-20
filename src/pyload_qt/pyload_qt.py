@@ -45,6 +45,9 @@ from PySide6.QtGui import (
 )
 NetworkError = QNetworkReply.NetworkError
 
+from . import transferlistfilterswidget
+
+
 
 class PyLoadClient:
     def __init__(self):
@@ -268,15 +271,41 @@ class PyLoadUI(QMainWindow):
         splitter = QSplitter(Qt.Horizontal)
         root_layout.addWidget(splitter)
 
-        self.sidebar_widget = self.create_sidebar_widget()
         self.main_widget = self.create_main_widget()
+        self.packages_table.set_status_filter = lambda id: print("main_widget.set_status_filter", id)
+        self.packages_table.set_status_filter = self.packages_table_set_status_filter
+        # we need self.packages_table for self.sidebar_widget
+        self.sidebar_widget = self.create_sidebar_widget()
+
         splitter.addWidget(self.sidebar_widget)
         splitter.addWidget(self.main_widget)
 
         splitter.setSizes([40, 200])
+        # https://github.com/qbittorrent/qBittorrent/blob/feacfb062794f6fef00345ba704325a518ee6e5f/src/gui/mainwindow.cpp#L1366C1-L1368C1
+        # splitter.setStretchFactor(0, 0)
+        # splitter.setStretchFactor(1, 1)
+
+    def packages_table_set_status_filter(self, status_id):
+        table = self.packages_table
+        if not status_id in (0, 1, 2):
+            raise ValueError(status_id)
+        # FIXME this conflicts with on_package_filter_change
+        if status_id == 0: # all
+            for row_idx in range(table.rowCount()):
+                table.setRowHidden(row_idx, False)
+        else:
+            for row_idx in range(table.rowCount()):
+                col_idx = 2 # Status: Queue or Collector
+                package_queue = table.item(row_idx, col_idx).data(Qt.UserRole)
+                if status_id == 1: # active aka "pyload queue"
+                    hidden = not(package_queue)
+                elif status_id == 2: # paused aka "pyload collector"
+                    hidden = package_queue
+                table.setRowHidden(row_idx, hidden)
 
     def create_sidebar_widget(self):
-        return QLabel("TODO sidebar")
+        # https://github.com/qbittorrent/qBittorrent/blob/master/src/gui/transferlistfilterswidget.cpp
+        return transferlistfilterswidget.TransferListFiltersWidget(self, self.packages_table)
 
     def create_main_widget(self):
         # Main widget and layout
@@ -1029,6 +1058,7 @@ class PyLoadUI(QMainWindow):
             # Status: Queue or Collector
             status_str = "Active" if package["queue"] else "Paused"
             item = QTableWidgetItem(status_str)
+            item.setData(Qt.UserRole, package["queue"])
             self.packages_table.setItem(row, col, item)
             col += 1
 
