@@ -398,6 +398,11 @@ class PyLoadUI(QMainWindow):
         # Left-Pointing Double Angle Quotation Mark
         add_text_button("«", "Move to top", self.move_package_to_top, 25, rotate=90, translate=(0, -5))
 
+        # Broom emoji - no, too much color
+        # add_text_button("🧹", "Remove unfinished links", self.remove_unfinished_links, 18)
+        # "funnel" symbol https://stackoverflow.com/questions/37991395
+        add_text_button("Y", "Remove unfinished links", self.remove_unfinished_links, 16)
+
         spacer = QWidget()
         spacer.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
         self.toolbar.addWidget(spacer)
@@ -442,7 +447,7 @@ class PyLoadUI(QMainWindow):
         table.setHorizontalHeaderLabels(column_labels)
         table.horizontalHeader().setSectionResizeMode(1, QHeaderView.Stretch)
         table.setSelectionBehavior(QTableWidget.SelectRows)
-        table.setSelectionMode(QTableWidget.SingleSelection)
+        # table.setSelectionMode(QTableWidget.SingleSelection)
         table.itemSelectionChanged.connect(self.on_package_selected)
         table.itemDoubleClicked.connect(self.on_package_doubleclicked)
         table.setSortingEnabled(True)
@@ -788,6 +793,33 @@ class PyLoadUI(QMainWindow):
     def move_package_to_top(self):
         print("TODO move_package_to_top")
 
+    def remove_unfinished_links(self):
+        table = self.packages_table
+        pids = []
+        for item in table.selectedItems():
+            if item.column() != 0: continue
+            pid = item.data(Qt.UserRole)
+            pids.append(pid)
+        if not pids:
+            QMessageBox.information(self, "Error", "No packages selected")
+            return
+        # Confirm deletion
+        reply = QMessageBox.question(
+            self,
+            "Confirm Removal",
+            f"Remove unfinished links in {len(pids)} packages?",
+            QMessageBox.Yes | QMessageBox.No,
+            QMessageBox.No
+        )
+        if reply != QMessageBox.Yes:
+            return
+        def on_delete_unfinished_links(res):
+            # TODO handle errors
+            print("delete_unfinished_links result", res)
+            QMessageBox.information(self, "Success", f"Removed {res} links")
+            self.refresh_queue()
+        self.client.delete_unfinished_links(on_delete_unfinished_links, package_ids=pids)
+
     def show_package_links_context_menu(self, position):
         selected_rows = set(index.row() for index in self.package_links_table.selectedIndexes())
         if not selected_rows:
@@ -966,6 +998,8 @@ class PyLoadUI(QMainWindow):
         self.client.get_queue_and_collector(self.on_queue_and_collector_received)
 
     def on_queue_and_collector_received(self, queue_data):
+        # FIXME preserve the previous sort order
+        # https://stackoverflow.com/questions/11826257
         self.debug_pid = None
         if self.debug_pid:
             for pkg in queue_data:
