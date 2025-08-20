@@ -41,6 +41,7 @@ from PySide6.QtGui import QAction, QKeySequence
 from PySide6.QtGui import QFont
 from PySide6.QtGui import (
     QClipboard,
+    QPainter,
 )
 NetworkError = QNetworkReply.NetworkError
 
@@ -182,6 +183,58 @@ class Object(object):
      pass
 
 
+# alternative: class RotateLabel(QLabel)
+r"""
+# FIXME this creates a black box
+from PySide6.QtWidgets import (
+    QGraphicsScene,
+    QGraphicsProxyWidget,
+    QGraphicsView,
+)
+_label = QLabel(label)
+font_weight = QFont.Bold if bold else QFont.Normal
+font = QFont("Arial", size, font_weight)
+_label.setFont(font)
+# https://stackoverflow.com/search?q=%5Bpyside%5D+QGraphicsProxyWidget
+# _label.setFixedSize(100, 40)
+# https://www.qtcentre.org/threads/56742-how-to-make-transparent-qgraphicsproxywidget
+# _label.setStyleSheet("background-color:transparent")
+# _label.setAutoFillBackground(False)
+# https://stackoverflow.com/a/11676527/10440128
+scene = QGraphicsScene()
+proxy = QGraphicsProxyWidget()
+proxy.setWidget(_label)
+scene.addItem(proxy)
+# proxy.setPos(50, 50)
+proxy.setRotation(rotate)
+view = QGraphicsView(scene)
+# view.setStyleSheet("background-color:transparent")
+# view.setAutoFillBackground(False)
+# https://stackoverflow.com/questions/60730190
+_label.update()
+_label.show()
+view.show()
+_label = view
+"""
+
+
+class RotateLabel(QLabel):
+    # https://stackoverflow.com/a/70480783/10440128
+    def __init__(self, *a, rotate=0, translate=(0, 0), **k):
+        super().__init__(*a, **k)
+        self.rotate = rotate
+        self.translate = translate
+    def paintEvent(self, e): # e: QPaintEvent
+        painter = QPainter(self)
+        painter.translate(self.rect().center())
+        painter.rotate(self.rotate)
+        painter.translate(-self.rect().center())
+        if self.translate != (0, 0):
+            painter.translate(*self.translate)
+        painter.drawText(self.rect(), Qt.AlignHCenter | Qt.AlignVCenter, self.text())
+        # QWidget.paintEvent(e)
+
+
 class PyLoadUI(QMainWindow):
     def __init__(self):
         super().__init__()
@@ -307,7 +360,15 @@ class PyLoadUI(QMainWindow):
         self.toolbar.addAction(add_action)
         """
 
-        def add_text_button(label, tooltip, action, size=25, bold=False):
+        def add_text_button(
+                label,
+                tooltip,
+                action,
+                size=25,
+                bold=False,
+                rotate=0,
+                translate=(0, 0),
+            ):
             # https://stackoverflow.com/a/79735780/10440128
             button = QToolButton()
             _action = QAction()
@@ -315,7 +376,10 @@ class PyLoadUI(QMainWindow):
             _action.triggered.connect(action)
             button.setDefaultAction(_action)
             layout = QVBoxLayout(button)
-            _label = QLabel(label)
+            if rotate == 0:
+                _label = QLabel(label)
+            else:
+                _label = RotateLabel(label, rotate=rotate, translate=translate)
             font_weight = QFont.Bold if bold else QFont.Normal
             font = QFont("Arial", size, font_weight)
             _label.setFont(font)
@@ -330,6 +394,9 @@ class PyLoadUI(QMainWindow):
 
         # restart symbol = Anticlockwise Open Circle Arrow
         add_text_button("↺", "Restart Failed", self.restart_failed, 18)
+
+        # Left-Pointing Double Angle Quotation Mark
+        add_text_button("«", "Move to top", self.move_package_to_top, 25, rotate=90, translate=(0, -5))
 
         spacer = QWidget()
         spacer.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
@@ -717,6 +784,9 @@ class PyLoadUI(QMainWindow):
     def restart_failed(self):
         cb = lambda *a: print("restart_failed: done")
         self.client.restart_failed(cb)
+
+    def move_package_to_top(self):
+        print("TODO move_package_to_top")
 
     def show_package_links_context_menu(self, position):
         selected_rows = set(index.row() for index in self.package_links_table.selectedIndexes())
