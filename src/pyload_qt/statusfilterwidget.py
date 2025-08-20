@@ -116,6 +116,18 @@ class StatusFilterWidget(QListWidget):
         paused.setData(Qt.DisplayRole, self.tr("Paused"))
         # paused.setData(Qt.DecorationRole, UIThemeManager.instance().getIcon("paused", "media-playback-pause"))
 
+        # Complete
+        complete = QListWidgetItem(self)
+        complete.setData(Qt.DisplayRole, self.tr("Complete"))
+
+        # Partial
+        partial = QListWidgetItem(self)
+        partial.setData(Qt.DisplayRole, self.tr("Partial"))
+
+        # Empty
+        empty = QListWidgetItem(self)
+        empty.setData(Qt.DisplayRole, self.tr("Empty"))
+
         r"""
         # Inactive
         inactive = QListWidgetItem(self)

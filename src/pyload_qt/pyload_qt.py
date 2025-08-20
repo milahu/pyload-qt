@@ -287,20 +287,32 @@ class PyLoadUI(QMainWindow):
 
     def packages_table_set_status_filter(self, status_id):
         table = self.packages_table
-        if not status_id in (0, 1, 2):
-            raise ValueError(status_id)
+        max_status_id = 5
+        if not (0 <= status_id <= max_status_id):
+            raise ValueError(f"bad status_id {status_id}")
         # FIXME this conflicts with on_package_filter_change
         if status_id == 0: # all
             for row_idx in range(table.rowCount()):
                 table.setRowHidden(row_idx, False)
         else:
             for row_idx in range(table.rowCount()):
-                col_idx = 2 # Status: Queue or Collector
-                package_queue = table.item(row_idx, col_idx).data(Qt.UserRole)
-                if status_id == 1: # active aka "pyload queue"
-                    hidden = not(package_queue)
-                elif status_id == 2: # paused aka "pyload collector"
-                    hidden = package_queue
+                package_queue_col_idx = 2 # Status: Queue or Collector
+                package_progress_col_idx = 3 # Progress
+                hidden = False
+                if status_id in (1, 2):
+                    package_queue = table.item(row_idx, package_queue_col_idx).data(Qt.UserRole)
+                    if status_id == 1: # active aka "pyload queue"
+                        hidden = not(package_queue)
+                    elif status_id == 2: # paused aka "pyload collector"
+                        hidden = package_queue
+                if status_id in (3, 4, 5):
+                    package_progress = table.item(row_idx, package_progress_col_idx).data(Qt.UserRole)
+                    if status_id == 3: # complete
+                        hidden = (package_progress < 1)
+                    elif status_id == 4: # partial
+                        hidden = (package_progress in (0, 1))
+                    elif status_id == 5: # empty
+                        hidden = (package_progress > 0)
                 table.setRowHidden(row_idx, hidden)
 
     def create_sidebar_widget(self):
@@ -1064,13 +1076,14 @@ class PyLoadUI(QMainWindow):
 
             # Progress
             if package["sizetotal"] > 0:
-                progress = (package["linksdone"] / package["linkstotal"]) * 100
-                progress_text = f"{progress:.1f}%"
+                progress = (package["linksdone"] / package["linkstotal"])
+                progress_text = f"{(progress * 100):.1f}%"
             else:
                 progress = 0
                 progress_text = "0.0%"
             # self.packages_table.setItem(row, 1, QTableWidgetItem(progress_text))
             progress_item = SortKeyTableWidgetItem(progress_text, progress)
+            progress_item.setData(Qt.UserRole, progress)
             self.packages_table.setItem(row, col, progress_item)
             col += 1
 
