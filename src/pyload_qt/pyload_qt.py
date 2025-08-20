@@ -346,7 +346,7 @@ class PyLoadUI(QMainWindow):
             "Files",
         ]
 
-        self.default_bottom_view_name = "Links"
+        self.default_bottom_view_name = "Downloads"
         self.default_bottom_view_idx = self.bottom_view_names.index(self.default_bottom_view_name)
 
         self.create_bottom_view_button_group(main_layout)
