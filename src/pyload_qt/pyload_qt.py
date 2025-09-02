@@ -927,12 +927,15 @@ class PyLoadUI(QMainWindow):
         menu = QMenu()
         copy_action = menu.addAction("Copy Links")
         remove_action = menu.addAction("Remove Links")
+        restart_action = menu.addAction("Restart Failed Links")
         action = menu.exec(self.package_links_table.viewport().mapToGlobal(position))
 
         if action == copy_action:
             self.copy_selected_links()
         elif action == remove_action:
             self.remove_selected_links()
+        elif action == restart_action:
+            self.restart_selected_links()
 
     def copy_selected_links(self):
         table = self.package_links_table
@@ -949,15 +952,20 @@ class PyLoadUI(QMainWindow):
         cb.clear(mode=QClipboard.Clipboard)
         cb.setText(text, mode=QClipboard.Clipboard)
 
+    def get_selected_package_link_ids(self):
+        # note: pyload calls this "file_ids"
+        table = self.package_links_table
+        link_ids = []
+        for item in table.selectedItems():
+            # link_id is stored in cell 0
+            if item.column() != 0: continue
+            link_id = item.data(Qt.UserRole)
+            link_ids.append(link_id)
+        return link_ids
+
     def remove_selected_links(self):
         # FIXME update package progress after removing files (links)
-        table = self.package_links_table
-        fids = []
-        for item in table.selectedItems():
-            if item.column() != 0: continue
-            fid = item.data(Qt.UserRole)
-            fids.append(fid)
-
+        fids = self.get_selected_package_link_ids()
         if not fids:
             return
 
@@ -999,6 +1007,17 @@ class PyLoadUI(QMainWindow):
                 self.client.get_package_data(self.on_package_data_received, pid)
         else:
             QMessageBox.warning(self, "Error", f"Failed to remove links: {result}")
+
+    def restart_selected_links(self):
+        link_ids = self.get_selected_package_link_ids()
+        if not link_ids:
+            return
+        # note: only restart *failed* links
+        # -> dont lose finished links
+        self.client.restart_failed(self.on_links_restarted, link_ids=link_ids)
+
+    def on_links_restarted(self, response):
+        print(f"on_links_restarted: {response}")
 
     def show_add_package_dialog(self):
         dialog = AddPackageDialog(self)
