@@ -603,11 +603,13 @@ class PyLoadUI(QMainWindow):
 
             # Package name
             item = QTableWidgetItem(link["package_name"])
+            item.setToolTip(link["package_name"])
             table.setItem(row, col, item)
             col += 1
 
             # Link name
             item = QTableWidgetItem(link["name"])
+            item.setToolTip(link["name"])
             table.setItem(row, col, item)
             col += 1
 
@@ -632,17 +634,22 @@ class PyLoadUI(QMainWindow):
             col += 1
 
             # Plugin
-            table.setItem(row, col, QTableWidgetItem(link["plugin"]))
+            item = QTableWidgetItem(link["plugin"])
+            item.setToolTip(link["plugin"])
+            table.setItem(row, col, item)
             col += 1
 
             # Status
             # todo? map from link["status"] to custom order
             item = SortKeyTableWidgetItem(link["statusmsg"], link["status"])
+            item.setToolTip(link["statusmsg"])
             table.setItem(row, col, item)
             col += 1
 
             # Info
-            table.setItem(row, col, QTableWidgetItem(link["info"]))
+            item = QTableWidgetItem(link["info"])
+            item.setToolTip(link["info"])
+            table.setItem(row, col, item)
             col += 1
 
     def create_package_files_view(self):
@@ -1278,8 +1285,9 @@ class PyLoadUI(QMainWindow):
             col += 1
 
             # Error
-            # TODO add tooltip with full error message
-            self.package_links_table.setItem(row, col, QTableWidgetItem(link["error"]))
+            item = QTableWidgetItem(link["error"])
+            item.setToolTip(link["error"])
+            self.package_links_table.setItem(row, col, item)
             col += 1
 
     def add_package(self):
