@@ -498,6 +498,8 @@ class PyLoadUI(QMainWindow):
         table.setEditTriggers(QAbstractItemView.NoEditTriggers)
         # TODO filter by search expression (regex?)
         # TODO select multiple packages -> rightclick -> remove / ...
+        table.setContextMenuPolicy(Qt.CustomContextMenu)
+        table.customContextMenuRequested.connect(self.show_packages_context_menu)
         return table
 
     def create_bottom_view(self):
@@ -861,6 +863,62 @@ class PyLoadUI(QMainWindow):
             self.refresh_queue()
         self.client.delete_unfinished_links(on_delete_unfinished_links, package_ids=pids)
 
+    def show_packages_context_menu(self, position):
+        selected_rows = set(index.row() for index in self.packages_table.selectedIndexes())
+        if not selected_rows:
+            return
+
+        menu = QMenu()
+
+        start_action = menu.addAction("Start Packages") # collector -> queue
+        pause_action = menu.addAction("Pause Packages") # queue -> collector
+        # remove_action = menu.addAction("Remove Packages")
+        # move_top_action = menu.addAction("Move Packages to Top")
+        # move_bottom_action = menu.addAction("Move Packages to Bottom")
+        # TODO more
+
+        action = menu.exec(self.packages_table.viewport().mapToGlobal(position))
+
+        if action == start_action:
+            self.start_selected_packages()
+        if action == pause_action:
+            self.pause_selected_packages()
+        # elif action == remove_action:
+        #     self.remove_selected_packages()
+        # TODO more
+
+    def get_selected_package_ids(self):
+        package_ids = []
+        table = self.packages_table
+        for item in table.selectedItems():
+            # package_id is stored in cell 0
+            if item.column() != 0: continue
+            package_id = item.data(Qt.UserRole)
+            package_ids.append(package_id)
+        return package_ids
+
+    def start_selected_packages(self):
+        package_ids = self.get_selected_package_ids()
+        if not package_ids:
+            return
+        # Moves package from Collector to Queue.
+        self.client.push_to_queue(self.on_packages_started, package_ids=package_ids)
+
+    def on_packages_started(self, response):
+        print(f"on_packages_started: {response}")
+        self.reload_packages_table()
+
+    def pause_selected_packages(self):
+        package_ids = self.get_selected_package_ids()
+        if not package_ids:
+            return
+        # Moves package from Queue to Collector.
+        self.client.pull_from_queue(self.on_packages_paused, package_ids=package_ids)
+
+    def on_packages_paused(self, response):
+        print(f"on_packages_paused: {response}")
+        self.reload_packages_table()
+
     def show_package_links_context_menu(self, position):
         selected_rows = set(index.row() for index in self.package_links_table.selectedIndexes())
         if not selected_rows:
@@ -1043,6 +1101,9 @@ class PyLoadUI(QMainWindow):
         }
         """
 
+    def reload_packages_table(self):
+        return self.refresh_queue()
+
     def refresh_queue(self):
         self.client.get_queue_and_collector(self.on_queue_and_collector_received)
 
@@ -1066,6 +1127,7 @@ class PyLoadUI(QMainWindow):
 
             # Position
             position_item = SortKeyTableWidgetItem(str(row + 1), (row + 1))
+            # package_id is stored in cell 0
             position_item.setData(Qt.UserRole, package["pid"])  # Store package ID
             self.packages_table.setItem(row, col, position_item)
             col += 1
