@@ -1313,7 +1313,7 @@ class PyLoadUI(QMainWindow):
 
     def on_package_added(self, pid):
         if pid:
-            QMessageBox.information(self, "Success", "Package added successfully")
+            # QMessageBox.information(self, "Success", "Package added successfully")
             self.refresh_queue()
         else:
             QMessageBox.warning(self, "Error", "Failed to add package")
