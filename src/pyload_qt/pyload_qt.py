@@ -156,10 +156,7 @@ class AddPackageDialog(QDialog):
         button_layout = QHBoxLayout()
         self.add_button = QPushButton("Add Package")
         self.add_button.clicked.connect(self.accept)
-        self.cancel_button = QPushButton("Cancel")
-        self.cancel_button.clicked.connect(self.reject)
         button_layout.addWidget(self.add_button)
-        button_layout.addWidget(self.cancel_button)
         layout.addLayout(button_layout)
 
     def get_package_data(self):
