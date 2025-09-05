@@ -20,6 +20,7 @@ from PySide6.QtWidgets import (
     QTableWidget,
     QTableWidgetItem,
     QTextEdit,
+    QPlainTextEdit,
     QSplitter,
     QHeaderView,
     QMessageBox,
@@ -141,7 +142,7 @@ class AddPackageDialog(QDialog):
 
         # Links input
         layout.addWidget(QLabel("Links (one per line or space separated):"))
-        self.links_input = QTextEdit()
+        self.links_input = QPlainTextEdit()
         layout.addWidget(self.links_input)
 
         # Package password
