@@ -1209,7 +1209,7 @@ class PyLoadUI(QMainWindow):
             return
         if not self.client.is_localhost: return
 
-        storage_folder = self.get_config_value("general", "storage_folder")
+        storage_folder = self.get_config_value("core", "general", "storage_folder")
 
         def on_package_data_received(package_data):
             # print(f"on_package_doubleclicked package_data {package_data}")
