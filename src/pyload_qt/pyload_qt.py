@@ -298,13 +298,19 @@ class PyLoadUI(QMainWindow):
                 package_progress_col_idx = 3 # Progress
                 hidden = False
                 if status_id in (1, 2):
-                    package_queue = table.item(row_idx, package_queue_col_idx).data(Qt.UserRole)
+                    package_queue_item = table.item(row_idx, package_queue_col_idx)
+                    if package_queue_item is None:
+                        continue
+                    package_queue = package_queue_item.data(Qt.UserRole)
                     if status_id == 1: # active aka "pyload queue"
                         hidden = not(package_queue)
                     elif status_id == 2: # paused aka "pyload collector"
                         hidden = package_queue
                 if status_id in (3, 4, 5):
-                    package_progress = table.item(row_idx, package_progress_col_idx).data(Qt.UserRole)
+                    package_progress_item = table.item(row_idx, package_progress_col_idx)
+                    if package_progress_item is None:
+                        continue
+                    package_progress = package_progress_item.data(Qt.UserRole)
                     if status_id == 3: # complete
                         hidden = (package_progress < 1)
                     elif status_id == 4: # partial
