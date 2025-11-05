@@ -47,6 +47,7 @@ from PySide6.QtGui import (
 NetworkError = QNetworkReply.NetworkError
 
 from . import transferlistfilterswidget
+from . import app_settings
 
 
 
@@ -447,6 +448,9 @@ class PyLoadUI(QMainWindow):
         # add_text_button("🧹", "Remove unfinished links", self.remove_unfinished_links, 18)
         # "funnel" symbol https://stackoverflow.com/questions/37991395
         add_text_button("Y", "Remove unfinished links", self.remove_unfinished_links, 16)
+
+        # Gear symbol = app settings
+        add_text_button("⚙", "Settings", self.show_app_settings, 19)
 
         spacer = QWidget()
         spacer.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
@@ -893,6 +897,12 @@ class PyLoadUI(QMainWindow):
             QMessageBox.information(self, "Success", f"Removed {res} links")
             self.refresh_queue()
         self.client.delete_unfinished_links(on_delete_unfinished_links, package_ids=pids)
+
+    def show_app_settings(self):
+        print("show_app_settings")
+        dialog = app_settings.AppSettingsDialog(self)
+        dialog.setModal(True)
+        dialog.exec()
 
     def show_packages_context_menu(self, position):
         selected_rows = set(index.row() for index in self.packages_table.selectedIndexes())
