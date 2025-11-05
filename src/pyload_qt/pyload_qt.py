@@ -900,7 +900,7 @@ class PyLoadUI(QMainWindow):
 
         start_action = menu.addAction("Start Packages") # collector -> queue
         pause_action = menu.addAction("Pause Packages") # queue -> collector
-        # remove_action = menu.addAction("Remove Packages")
+        remove_action = menu.addAction("Remove Packages")
         # move_top_action = menu.addAction("Move Packages to Top")
         # move_bottom_action = menu.addAction("Move Packages to Bottom")
         # TODO more
@@ -911,8 +911,8 @@ class PyLoadUI(QMainWindow):
             self.start_selected_packages()
         if action == pause_action:
             self.pause_selected_packages()
-        # elif action == remove_action:
-        #     self.remove_selected_packages()
+        elif action == remove_action:
+            self.remove_selected_packages()
         # TODO more
 
     def get_selected_package_ids(self):
@@ -945,6 +945,16 @@ class PyLoadUI(QMainWindow):
 
     def on_packages_paused(self, response):
         print(f"on_packages_paused: {response}")
+        self.reload_packages_table()
+
+    def remove_selected_packages(self):
+        package_ids = self.get_selected_package_ids()
+        if not package_ids:
+            return
+        self.client.delete_packages(self.on_packages_removed, package_ids=package_ids)
+
+    def on_packages_removed(self, response):
+        print(f"on_packages_removed: {response}")
         self.reload_packages_table()
 
     def show_package_links_context_menu(self, position):
