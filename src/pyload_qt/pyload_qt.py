@@ -594,6 +594,7 @@ class PyLoadUI(QMainWindow):
         # TODO what is links["ids"]? these are different from link["fid"]
         # print("links", links)
         table = self.package_downloads_view
+        table.clearContents()
         table.setRowCount(len(links["links"]))
         for row, link in enumerate(links["links"]):
             col = 0
@@ -697,6 +698,7 @@ class PyLoadUI(QMainWindow):
         if file_details_list is None or isinstance(file_details_list, QNetworkReply.NetworkError):
             # this can happen when the folder does not exist
             # QNetworkReply.NetworkError.InternalServerError
+            table.clearContents()
             table.setRowCount(0)
             return
         # table.setRowCount(0)
@@ -705,6 +707,7 @@ class PyLoadUI(QMainWindow):
         _debug_package_files_view = False
         if _debug_package_files_view:
             print("on_package_files_data")
+        table.clearContents()
         table.setRowCount(len(file_details_list))
         # TODO add "../" special file in subdirs
         # if self.package_files_subdir != ""
@@ -1178,6 +1181,8 @@ class PyLoadUI(QMainWindow):
             QMessageBox.warning(self, "Error", "Could not fetch queue")
             return
 
+        table = self.packages_table
+        table.clearContents()
         self.packages_table.setRowCount(len(queue_data))
         for row, package in enumerate(queue_data):
             col = 0
@@ -1259,7 +1264,9 @@ class PyLoadUI(QMainWindow):
         self.client.get_package_data(on_package_data_received, pid)
 
     def on_package_data_received(self, package_data):
+        table = self.package_links_table
         if package_data is None:
+            table.clearContents()
             self.package_links_table.setRowCount(0)
             return
         if self._debug_package_data:
@@ -1269,6 +1276,7 @@ class PyLoadUI(QMainWindow):
                     break
             print(f"on_package_data_received: package_data = {json.dumps(package_data, indent=2)}")
             if package_data is None:
+                table.clearContents()
                 self.package_links_table.setRowCount(0)
                 return
 
@@ -1283,6 +1291,7 @@ class PyLoadUI(QMainWindow):
         # this seems to be necessary to fix table updates
         # without this, the result table can contain duplicate values
         # TODO why?
+        table.clearContents()
         self.package_links_table.setRowCount(0)
 
         links = package_data.get("links", [])
