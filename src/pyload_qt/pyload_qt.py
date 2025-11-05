@@ -441,7 +441,7 @@ class PyLoadUI(QMainWindow):
         add_text_button("↺", "Restart Failed", self.restart_failed, 18)
 
         # Left-Pointing Double Angle Quotation Mark
-        add_text_button("«", "Move to top", self.move_package_to_top, 25, rotate=90, translate=(0, -5))
+        add_text_button("«", "Move to top", self.move_packages_to_top, 25, rotate=90, translate=(0, -5))
 
         # Broom emoji - no, too much color
         # add_text_button("🧹", "Remove unfinished links", self.remove_unfinished_links, 18)
@@ -844,8 +844,25 @@ class PyLoadUI(QMainWindow):
         cb = lambda *a: print("restart_failed: done")
         self.client.restart_failed(cb)
 
-    def move_package_to_top(self):
-        print("TODO move_package_to_top")
+    def move_packages_to_top(self):
+        table = self.packages_table
+        pids = []
+        for item in table.selectedItems():
+            if item.column() != 0: continue
+            pid = item.data(Qt.UserRole)
+            pids.append(pid)
+        if not pids:
+            QMessageBox.information(self, "Error", "No packages selected")
+            return
+        def on_move_packages_to_top(response):
+            if response is None:
+                self.reload_packages_table()
+            else:
+                # error
+                # FIXME on_move_packages_to_top: NetworkError.InternalServerError
+                # but when i close and restart the app, the packages were moved to the top
+                print(f"on_move_packages_to_top: {response}")
+        self.client.order_packages(on_move_packages_to_top, package_ids=pids, position=0)
 
     def remove_unfinished_links(self):
         table = self.packages_table
