@@ -1,3 +1,5 @@
+import json
+
 from PySide6.QtWidgets import (
     QDialog,
     QWidget,
@@ -43,16 +45,178 @@ class AppSettingsDialog(QDialog):
         self.pending_changes = {}  # keys: (section, category, option) -> new_value (string)
         self._current_section = None  # 'core' or 'plugin'
         self._current_category = None  # e.g. 'general' or 'AlfadfileNet'
-        self.config = {}
+        self.config = {
+            "core": {}, # aka "general"
+            "plugins": {},
+            "accounts": {},
+            "users": {},
+        }
         self._init_ui()
-        self.client.get_core_and_plugins_config(self.on_config)
-        # self.client.get_core_and_plugins_and_accounts_config(self.on_config)
+        self.client.get_config(self.on_core_config)
 
-    def on_config(self, config: dict):
-        """Called when client returns combined core+plugins config."""
+    def on_core_config(self, config: dict):
         # FIXME handle errors
-        self.config = config or {}
+        section = "core"
+        # print(f"{section} config:", json.dumps(config, indent=2))
+        self.config[section] = config or {}
         self._populate_tree()
+        self._tree_select_section(section)
+
+    def on_plugins_config(self, config: dict):
+        # FIXME handle errors
+        section = "plugins"
+        # print(f"{section} config:", json.dumps(config, indent=2))
+        self.config[section] = config or {}
+        self._populate_tree(section)
+
+    def on_accounts_config(self, config: dict):
+        # FIXME handle errors
+        # TODO allow adding new accounts
+        section = "accounts"
+        # print(f"{section} config:", json.dumps(config, indent=2))
+        assert type(config) == list
+        for account in config:
+            category = account["type"] + " " + account["login"]
+            category_dict = {
+                "name": category,
+                # "description": "some description",
+                "items": [
+                    {
+                        "name": "type",
+                        "description": "type",
+                        "value": account["type"],
+                        "type": "str",
+                        "readonly": True,
+                    },
+                    {
+                        "name": "login",
+                        "description": "Username",
+                        "value": account["login"],
+                        "type": "str",
+                    },
+                    {
+                        "name": "password",
+                        "description": "Password",
+                        "value": "***", # TODO allow changes
+                        "type": "password",
+                    },
+                    {
+                        "name": "validuntil",
+                        "description": "validuntil",
+                        "value": account["validuntil"],
+                        "type": "str", # TODO datetime or None
+                        "readonly": True,
+                    },
+                    {
+                        "name": "options",
+                        "description": "options",
+                        "value": json.dumps(account["options"]),
+                        "type": "str",
+                    },
+                    {
+                        "name": "valid",
+                        "description": "valid",
+                        "value": account["valid"],
+                        "type": "bool",
+                        "readonly": True,
+                    },
+                    {
+                        "name": "trafficleft",
+                        "description": "trafficleft",
+                        "value": account["trafficleft"],
+                        "type": "int",
+                        "readonly": True,
+                    },
+                    {
+                        "name": "premium",
+                        "description": "premium",
+                        "value": account["premium"],
+                        "type": "bool",
+                        "readonly": True,
+                    },
+                    {
+                        "name": "delete",
+                        "description": "delete",
+                        "value": False,
+                        "type": "bool",
+                        "readonly": True, # TODO allow changes
+                    },
+                ],
+            }
+            self.config[section][category] = category_dict
+        self._populate_tree(section)
+
+    def on_users_config(self, config: dict):
+        # FIXME handle errors
+        # TODO allow adding new users
+        section = "users"
+        # print(f"{section} config:", json.dumps(config, indent=2))
+        self.config[section] = {}
+        for user in config.values():
+            category = user["name"]
+            category_dict = {
+                "name": category,
+                # "description": "some description",
+                "items": [
+                    {
+                        "name": "id",
+                        "description": "id",
+                        "value": user["id"],
+                        "type": "int",
+                        "readonly": True,
+                    },
+                    {
+                        "name": "name",
+                        "description": "name",
+                        "value": user["name"],
+                        "type": "str",
+                        "readonly": True,
+                    },
+                    {
+                        "name": "password",
+                        "description": "password",
+                        "value": "***", # TODO allow changes
+                        "type": "password",
+                    },
+                    {
+                        "name": "email",
+                        "description": "email",
+                        "value": user["email"],
+                        "type": "str",
+                    },
+                    {
+                        "name": "role",
+                        "description": "role",
+                        "value": user["role"],
+                        "type": "int", # TODO role=0 means admin?
+                        "readonly": True, # TODO allow changes
+                    },
+                    {
+                        # FIXME add one config item per permission bit
+                        "name": "permission",
+                        "description": "permission",
+                        "value": user["permission"],
+                        "type": "int",
+                        "readonly": True, # TODO allow changes
+                    },
+                    {
+                        "name": "template", # TODO what?
+                        "description": "template",
+                        "value": user["template"],
+                        "type": "str",
+                        "readonly": True, # TODO allow changes?
+                    },
+                    {
+                        "name": "delete",
+                        "description": "delete",
+                        "value": False,
+                        "type": "bool",
+                        "readonly": True, # TODO allow changes
+                    },
+                ],
+            }
+            self.config[section][category] = category_dict
+        self._populate_tree(section)
 
     def _init_ui(self):
         main_layout = QHBoxLayout(self)
@@ -75,6 +239,7 @@ class AppSettingsDialog(QDialog):
         left_layout.addWidget(self.tree)
 
         self.tree.itemClicked.connect(self.on_tree_item_clicked)
+        self.tree.itemExpanded.connect(self.on_tree_item_expanded)
 
         main_layout.addWidget(left_widget, 1)
 
@@ -108,23 +273,42 @@ class AppSettingsDialog(QDialog):
 
         main_layout.addWidget(right_widget, 2)
 
-    def _populate_tree(self):
-        self.tree.clear()
-        # section = "core", "plugins"
-        for section in sorted(self.config.keys()):
-            section_root = QTreeWidgetItem(self.tree, [section])
-            section_root.setData(0, Qt.UserRole, (section, None))
-            for category_key in sorted(self.config[section].keys()):
-                category = self.config[section][category_key]
-                node = QTreeWidgetItem(section_root, [category.get("name", category_key)])
-                node.setData(0, Qt.UserRole, (section, category_key))
+    def _populate_tree(self, section=None):
+        populate_section = section
+        if populate_section is None:
+            # populate all sections
+            self.tree.clear()
+        for section_idx, section in enumerate(self.config.keys()):
+            if populate_section:
+                # section already exists in tree
+                section_root = self.tree.topLevelItem(section_idx)
+                # section_root.clear()
+                while section_root.childCount() > 0:
+                    child = section_root.child(0)
+                    section_root.removeChild(child)
+                    del child
+            else:
+                # add section to tree
+                section_root = QTreeWidgetItem(self.tree, [section])
+                section_root.setData(0, Qt.UserRole, (section, None))
+            for category in self.config[section].keys():
+                category_dict = self.config[section][category]
+                # print(f"section={section} category={category} category_dict={category_dict}")
+                node = QTreeWidgetItem(section_root, [category_dict.get("name", category)])
+                node.setData(0, Qt.UserRole, (section, category))
+                # FIXME recurse
+            if len(self.config[section]) == 0:
+                dummy_node = QTreeWidgetItem(section_root, ["(loading...)"])
+                category = True
+                dummy_node.setData(0, Qt.UserRole, (section, category))
+                section_root.setExpanded(False)  # collapse
 
-        self.tree.expandAll()
-
+    def _tree_select_section(self, section):
+        section_idx = list(self.config.keys()).index(section)
         # auto-select first category if available
-        first_section = self.tree.topLevelItem(0)
-        if first_section and first_section.childCount() > 0:
-            sel_item = first_section.child(0)
+        section_root = self.tree.topLevelItem(section_idx)
+        if section_root and section_root.childCount() > 0:
+            sel_item = section_root.child(0)
             self.tree.setCurrentItem(sel_item)
             self.on_tree_item_clicked(sel_item, 0)
 
@@ -142,6 +326,22 @@ class AppSettingsDialog(QDialog):
         items = self.config[section][category].get("items", [])
         self._populate_table(items)
 
+    def on_tree_item_expanded(self, item):
+        section, category = item.data(0, Qt.UserRole)
+        assert category is None # only top-level items should be expandable
+        # print(f"on_tree_item_expanded item={item} section={section} category={category}")
+        if len(self.config[section]) > 0:
+            # section has been loaded already
+            return
+        # load section
+        # print(f"loading section {section}")
+        if section == "plugins":
+            return self.client.get_plugin_config(self.on_plugins_config)
+        if section == "accounts":
+            return self.client.get_accounts(self.on_accounts_config)
+        if section == "users":
+            return self.client.get_all_userdata(self.on_users_config)
+
     def _populate_table(self, items):
         """Populate the right-hand table with description + widget per item."""
         self.table.clearContents()
@@ -151,6 +351,7 @@ class AppSettingsDialog(QDialog):
             desc = it.get("description", name)
             value = it.get("value", "")
             type_str = it.get("type", "str")
+            readonly = it.get("readonly", False)
 
             self.table.insertRow(idx)
             desc_item = QTableWidgetItem(desc)
@@ -159,7 +360,11 @@ class AppSettingsDialog(QDialog):
             desc_item.setData(Qt.UserRole, {"option": name, "type": type_str})
             self.table.setItem(idx, 0, desc_item)
 
-            widget = self._create_value_widget(type_str, value, self._make_on_value_changed(self._current_section, self._current_category, name))
+            on_value_changed = None
+            if not readonly:
+                on_value_changed = self._make_on_value_changed(self._current_section, self._current_category, name)
+
+            widget = self._create_value_widget(type_str, value, on_value_changed)
             self.table.setCellWidget(idx, 1, widget)
 
         # Resize value column to reasonable width
@@ -185,13 +390,22 @@ class AppSettingsDialog(QDialog):
                 if value and value not in choices:
                     combo.addItem(str(value))
                     combo.setCurrentIndex(combo.count() - 1)
-            combo.currentTextChanged.connect(lambda v: on_change_callable(str(v)))
+            if on_change_callable:
+                combo.currentTextChanged.connect(lambda v: on_change_callable(str(v)))
+            else:
+                combo.setReadOnly(True)
             return combo
 
         if lower == "bool":
             cb = QCheckBox()
             cb.setChecked(str(value).lower() in ("1", "true", "yes", "on", "t"))
-            cb.stateChanged.connect(lambda s: on_change_callable("True" if s == Qt.Checked else "False"))
+            if on_change_callable:
+                cb.stateChanged.connect(lambda s: on_change_callable("True" if s == Qt.Checked else "False"))
+            else:
+                # cb.setReadOnly(True)
+                # cb.setEnabled(False) # gray
+                cb.setAttribute(Qt.WA_TransparentForMouseEvents, True)
+                cb.setFocusPolicy(Qt.NoFocus)
             return cb
 
         if lower == "int":
@@ -199,7 +413,10 @@ class AppSettingsDialog(QDialog):
             le.setText(str(value))
             le.setValidator(QIntValidator())
             # on editingFinished, validate and call
-            le.editingFinished.connect(lambda le=le: on_change_callable(le.text()))
+            if on_change_callable:
+                le.editingFinished.connect(lambda le=le: on_change_callable(le.text()))
+            else:
+                le.setReadOnly(True)
             return le
 
         if lower == "folder":
@@ -212,13 +429,16 @@ class AppSettingsDialog(QDialog):
             btn = QToolButton()
             btn.setText("…")
             btn.setFixedWidth(28)
-            def browse():
-                selected = QFileDialog.getExistingDirectory(self, "Select folder", le.text() or "/")
-                if selected:
-                    le.setText(selected)
-                    on_change_callable(selected)
-            btn.clicked.connect(browse)
-            le.editingFinished.connect(lambda le=le: on_change_callable(le.text()))
+            if on_change_callable:
+                def browse():
+                    selected = QFileDialog.getExistingDirectory(self, "Select folder", le.text() or "/")
+                    if selected:
+                        le.setText(selected)
+                        on_change_callable(selected)
+                btn.clicked.connect(browse)
+                le.editingFinished.connect(lambda le=le: on_change_callable(le.text()))
+            else:
+                le.setReadOnly(True)
             h.addWidget(le)
             h.addWidget(btn)
             return container
@@ -226,7 +446,10 @@ class AppSettingsDialog(QDialog):
         # default: string
         le = QLineEdit()
         le.setText(str(value))
-        le.editingFinished.connect(lambda le=le: on_change_callable(le.text()))
+        if on_change_callable:
+            le.editingFinished.connect(lambda le=le: on_change_callable(le.text()))
+        else:
+            le.setReadOnly(True)
         return le
 
     def _make_on_value_changed(self, section, category, option):

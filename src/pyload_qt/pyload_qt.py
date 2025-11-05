@@ -899,7 +899,7 @@ class PyLoadUI(QMainWindow):
         self.client.delete_unfinished_links(on_delete_unfinished_links, package_ids=pids)
 
     def show_app_settings(self):
-        print("show_app_settings")
+        # print("show_app_settings")
         dialog = app_settings.AppSettingsDialog(self)
         dialog.setModal(True)
         dialog.exec()
