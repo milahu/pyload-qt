@@ -1,0 +1,9 @@
+get pyload debug logs per package and per link
+
+add links to existing packages
+
+use QSortFilterProxyModel for tables
+https://doc.qt.io/qtforpython-6/PySide6/QtCore/QSortFilterProxyModel.html
+https://stackoverflow.com/questions/65054604/pyqt5-qsortfilterproxymodel-sort-column-by-appropriate-data-type-int-float-da
+https://www.pythonguis.com/faq/how-to-create-a-filter-search-bar-for-a-qtablewidget/
+https://doc.qt.io/qt-6/qtwidgets-itemviews-basicsortfiltermodel-example.html
