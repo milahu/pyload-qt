@@ -494,7 +494,14 @@ class PyLoadUI(QMainWindow):
         ]
         table.setColumnCount(len(column_labels))
         table.setHorizontalHeaderLabels(column_labels)
-        table.horizontalHeader().setSectionResizeMode(1, QHeaderView.Stretch)
+        # table.horizontalHeader().setSectionResizeMode(1, QHeaderView.Stretch)
+        # default column width is 100
+        # NOTE leave room for vertical scrollbar
+        table.setColumnWidth(0, 10) # Pos "12345"
+        table.setColumnWidth(1, 640) # Package
+        table.setColumnWidth(2, 150) # Status: "Active" | "Paused"
+        table.setColumnWidth(3, 70) # Progress "12.3%"
+        table.setColumnWidth(4, 90) # Size "1000.00 MiB"
         table.setSelectionBehavior(QTableWidget.SelectRows)
         # table.setSelectionMode(QTableWidget.SingleSelection)
         table.itemSelectionChanged.connect(self.on_package_selected)
@@ -576,9 +583,17 @@ class PyLoadUI(QMainWindow):
         ]
         table.setColumnCount(len(column_labels))
         table.setHorizontalHeaderLabels(column_labels)
-        table.horizontalHeader().setSectionResizeMode(
-            1, QHeaderView.Stretch
-        )
+        # table.horizontalHeader().setSectionResizeMode(1, QHeaderView.Stretch)
+        # default column width is 100
+        # NOTE leave room for vertical scrollbar
+        table.setColumnWidth(0, 10) # Pos "12345"
+        table.setColumnWidth(1, 280) # Package
+        table.setColumnWidth(2, 150) # Link
+        table.setColumnWidth(3, 70) # Progress "12.3%"
+        table.setColumnWidth(4, 90) # Size "1000.00 MiB"
+        # table.setColumnWidth(5, 100) # Plugin "RapidgatorNet"
+        # table.setColumnWidth(6, 100) # Status "downloading"
+        table.setColumnWidth(7, 160) # Info "00:01:23 @ 12.34 MiB/s"
         table.setSelectionBehavior(QTableWidget.SelectRows)
         table.setSelectionMode(QTableWidget.ExtendedSelection)
         table.setContextMenuPolicy(Qt.CustomContextMenu)
