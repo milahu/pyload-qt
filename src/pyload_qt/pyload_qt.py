@@ -487,7 +487,7 @@ class PyLoadUI(QMainWindow):
         table = QTableWidget()
         column_labels = [
             "Pos",
-            "Package name",
+            "Package",
             "Status",
             "Progress",
             "Size",
