@@ -7,3 +7,20 @@ https://doc.qt.io/qtforpython-6/PySide6/QtCore/QSortFilterProxyModel.html
 https://stackoverflow.com/questions/65054604/pyqt5-qsortfilterproxymodel-sort-column-by-appropriate-data-type-int-float-da
 https://www.pythonguis.com/faq/how-to-create-a-filter-search-bar-for-a-qtablewidget/
 https://doc.qt.io/qt-6/qtwidgets-itemviews-basicsortfiltermodel-example.html
+
+update progress in packages table
+
+fix hangs/crashes
+blame status filter?
+
+packages table -> rightclick -> restart failed links
+
+allow empty package name
+
+delete multiple files
+use upstream API
+https://github.com/pyload/pyload/pull/4602
+
+downloads table
+click on download -> reset all filters (status, name) and focus package in packages table
+doubleclick on download -> open download directory
