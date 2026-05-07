@@ -61,6 +61,7 @@ class PyLoadClient:
         self.base_url = "http://[::1]:8000" # ipv6
         self.is_localhost = True
         self.session_cookie = None
+        self.csrf_token = None
         self.func_cache = {}
 
     # https://stackoverflow.com/questions/13194180/dynamic-method-generation-in-python
@@ -78,17 +79,32 @@ class PyLoadClient:
         def func(callback, *args, **kwargs):
             if name in ("status", "links"):
                 api_dir = "json"
+            elif name in ("login", "logout"):
+                # https://github.com/pyload/pyload/commit/adf33b94e8f4f366e0538c0f9cba95be842c071f
+                # deprecate /api/login and /api/logout endpoints
+                api_dir = ""
             else:
                 api_dir = "api"
-            if name in ("login",):
+            if name in ("login", "push_to_queue", "restart_failed"):
                 # method = "post"
                 is_get = False
             else:
                 # method = "get"
                 is_get = True
-            url = f"{self.base_url}/{api_dir}/{name}"
+            url = f"{self.base_url}/{os.path.join(api_dir, name)}"
+            is_get_csrf_token = False
+            is_login = False
+            if name == "_get_csrf_token":
+                is_get_csrf_token = True
+                is_get = True
+                url = f"{self.base_url}/login"
+            elif name == "login":
+                is_login = True
             if args:
                 url += "/" + ",".join(map(str, args))
+            # send csrf_token with all requests
+            if self.csrf_token and not "csrf_token" in kwargs:
+                kwargs["csrf_token"] = self.csrf_token
             if kwargs and is_get:
                 kwargs_json = dict()
                 for key, val in kwargs.items():
@@ -109,11 +125,27 @@ class PyLoadClient:
                 reply = self.manager.post(request, post_data)
             def handle_reply():
                 if reply.error() == QNetworkReply.NoError:
-                    data = json.loads(reply.readAll().data().decode())
+                    data_str = reply.readAll().data().decode()
+                    data = None
+                    if is_get_csrf_token:
+                        # if data_str.startswith("<!DOCTYPE html>"):
+                        regex = r'<meta name="csrf-token" content="([^"]+)"'
+                        match = re.search(regex, data_str)
+                        if match:
+                            data = match.group(1)
+                            self.csrf_token = data
+                    elif is_login:
+                        # data = not ("<title>Login - pyLoad" in data_str)
+                        data = ("<title>pyLoad - Dashboard</title>" in data_str)
+                    else:
+                        data = json.loads(data_str)
                     if callback: callback(data)
                 else:
                     # TODO also print response body with the server exception
-                    print(f"{name} reply.error", reply.error())
+                    error_message = reply.readAll().data().decode()
+                    if error_message:
+                        error_message = f": {error_message}"
+                    print(f"{name} reply.error: {reply.error()}{error_message}")
                     # consumers should check the result with
                     # isinstance(result, QNetworkReply.NetworkError)
                     if callback: callback(reply.error())
@@ -1112,8 +1144,35 @@ class PyLoadUI(QMainWindow):
             else:
                 self.client.add_package(self.on_package_added, name=name, links=links)
 
+    # https://github.com/pyload/pyload/pull/4643
+    # Basic auth in openapi spec
+    # Session based authentication is a target for CSRF attacks,
+    # so CSRF protection was added.
+    # The plan is to implement API key generation and to use it for API access
+    # but first I have to fix some bugs.
+    # Basic Auth was a quick fix.
+
+    # https://github.com/pyload/pyload/commit/adf33b94e8f4f366e0538c0f9cba95be842c071f
+    # deprecate /api/login and /api/logout endpoints
+
+    # pyload/src/pyload/webui/app/helpers.py
+    # api_key = flask.request.headers.get("X-API-Key", None)
+    # is_authenticated(s)
+    # set_session(user_info)
+
     def login(self):
-        self.client.login(self.on_login_result, username="pyload", password="pyload")
+        def on_csrf_token(csrf_token):
+            if csrf_token is None:
+                print("error: login failed: got no csrf_token")
+                QMessageBox.critical(self, "Login Failed", "Could not login to pyLoad: got no csrf_token")
+                return
+            self.client.login(
+                self.on_login_result,
+                username="pyload",
+                password="pyload",
+                # csrf_token=csrf_token,
+            )
+        self.client._get_csrf_token(on_csrf_token)
 
     def on_login_result(self, success):
         if success:
