@@ -85,7 +85,13 @@ class PyLoadClient:
                 api_dir = ""
             else:
                 api_dir = "api"
-            if name in ("login", "push_to_queue", "pull_from_queue", "restart_failed"):
+            post_methods = (
+                "login",
+                "push_to_queue",
+                "pull_from_queue",
+                "restart_failed",
+            )
+            if name in post_methods:
                 # method = "post"
                 is_get = False
             else:
