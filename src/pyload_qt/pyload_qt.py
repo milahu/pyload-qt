@@ -91,6 +91,7 @@ class PyLoadClient:
                 "pull_from_queue",
                 "restart_failed",
                 "delete_packages",
+                "add_package",
             )
             if name in post_methods:
                 # method = "post"
