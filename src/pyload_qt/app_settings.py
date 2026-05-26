@@ -412,7 +412,7 @@ class AppSettingsDialog(QDialog):
             cb = QCheckBox()
             cb.setChecked(str(value).lower() in ("1", "true", "yes", "on", "t"))
             if on_change_callable:
-                cb.stateChanged.connect(lambda s: on_change_callable("True" if s == Qt.Checked else "False"))
+                cb.stateChanged.connect(lambda s: on_change_callable("True" if s == Qt.Checked.value else "False"))
             else:
                 # cb.setReadOnly(True)
                 # cb.setEnabled(False) # gray
