@@ -28,6 +28,10 @@ from PySide6.QtCore import (
     QSize,
     QTimer,
 )
+from PySide6.QtNetwork import (
+    QNetworkReply,
+)
+NetworkError = QNetworkReply.NetworkError
 
 class AppSettingsDialog(QDialog):
     """
@@ -55,7 +59,9 @@ class AppSettingsDialog(QDialog):
         self.client.get_config(self.on_core_config)
 
     def on_core_config(self, config: dict):
-        # FIXME handle errors
+        if isinstance(config, NetworkError):
+            print("on_core_config: error", config)
+            return
         section = "core"
         # print(f"{section} config:", json.dumps(config, indent=2))
         self.config[section] = config or {}
@@ -63,14 +69,18 @@ class AppSettingsDialog(QDialog):
         self._tree_select_section(section)
 
     def on_plugins_config(self, config: dict):
-        # FIXME handle errors
+        if isinstance(config, NetworkError):
+            print("on_plugins_config: error", config)
+            return
         section = "plugins"
         # print(f"{section} config:", json.dumps(config, indent=2))
         self.config[section] = config or {}
         self._populate_tree(section)
 
     def on_accounts_config(self, config: dict):
-        # FIXME handle errors
+        if isinstance(config, NetworkError):
+            print("on_accounts_config: error", config)
+            return
         # TODO allow adding new accounts
         section = "accounts"
         # print(f"{section} config:", json.dumps(config, indent=2))
@@ -147,7 +157,9 @@ class AppSettingsDialog(QDialog):
         self._populate_tree(section)
 
     def on_users_config(self, config: dict):
-        # FIXME handle errors
+        if isinstance(config, NetworkError):
+            print("on_users_config: error", config)
+            return
         # TODO allow adding new users
         section = "users"
         # print(f"{section} config:", json.dumps(config, indent=2))
