@@ -77,6 +77,9 @@ class PyLoadClient:
         # def func(*args, callback=None, **kwargs): # ?
         # def func(self, callback, *args, **kwargs):
         def func(callback, *args, **kwargs):
+            # print(f"PyLoadClient.{name}: callback={callback} args={args} kwargs={kwargs}")
+            if not callable(callback):
+                raise ValueError("callback must be a function")
             if name in ("status", "links"):
                 api_dir = "json"
             elif name in ("login", "logout"):
