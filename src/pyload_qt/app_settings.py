@@ -27,6 +27,7 @@ from PySide6.QtCore import (
     Qt,
     QSize,
     QTimer,
+    QEventLoop,
 )
 from PySide6.QtNetwork import (
     QNetworkReply,
@@ -529,35 +530,117 @@ class AppSettingsDialog(QDialog):
             QMessageBox.warning(self, "Validation failed", errmsg)
             return
 
+        # build config dict
+        config = dict()
+        for (section, category, option), value in self.pending_changes.items():
+            section_name = "core" if section == "core" else "plugin"
+            config.setdefault(section_name, {})
+            config[section_name].setdefault(category, {})
+            config[section_name][category][option] = value
+
+        # async result container
+        has_result = False
+        result = None
+
+        # handle timeout
+        loop = QEventLoop()
+        timeout_ms = 5000
+        timer = QTimer(self)
+        timer.setSingleShot(True)
+
+        def on_timeout():
+            # print("set_config_values timeout")
+            if loop.isRunning():
+                loop.quit()
+
+        timer.timeout.connect(on_timeout)
+
+        def on_set_config_values(_result):
+            # print(f"on_set_config_values: result={_result}")
+            nonlocal has_result
+            nonlocal result
+            has_result = True
+            result = _result
+            if loop.isRunning():
+                loop.quit()
+
+        # send async request
+        self.client.set_config_values(on_set_config_values, config)
+
+        # wait for result or timeout
+        # print("on_apply: waiting for result or timeout")
+        timer.start(timeout_ms)
+        loop.exec_()
+        timer.stop()
+
+        # timeout
+        if not has_result:
+            # print("on_apply: no result")
+            QMessageBox.critical(self, "Timeout", "Timed out waiting for server response")
+            return
+
+        # network error
+        if isinstance(result, NetworkError):
+            # print(f"on_apply: network_error={result}")
+            QMessageBox.critical(self, "Network error", str(result))
+            return
+
+        # print(f"on_apply: result={result}")
+
         errors = []
-        # apply all pending changes
-        # We attempt all and collect failures rather than stopping at first
+
+        # handle API errors
+
+        def is_change_successful(errors, section, category, option):
+            """
+            Return True if this config value was successfully applied.
+            A parent-level error implies all descendants failed.
+            """
+            if "config" in errors: return False
+            if f"config.{section}" in errors: return False
+            if f"config.{section}.{category}" in errors: return False
+            if f"config.{section}.{category}.{option}" in errors: return False
+            return True
+
+        errors = result.get("errors", {}) if result else {}
+        # print(f"on_apply: errors={errors}")
+
+        failed_changes = []
+        successful_changes = []
+
+        # note: we have to iterate over a copy of self.pending_changes
+        # because we remove items
         for (section, category, option), value in list(self.pending_changes.items()):
             section_name = "core" if section == "core" else "plugin"
-            try:
-                # call client.set_config_value(category, option, value, section)
-                # note: in your spec, section can be "core" or "plugin"
-                self.client.set_config_value(category, option, value, section_name)
-                # remove pending change on success
-                del self.pending_changes[(section, category, option)]
-                # Also update our in-memory copy so UI reflects current values
-                cfg = self.config.get(section, {})
-                if category in cfg:
-                    for it in cfg[category]["items"]:
-                        if it.get("name") == option:
-                            it["value"] = value
-                            break
-            except Exception as e:
-                errors.append(f"{category}/{option}: {e}")
+            success = is_change_successful(errors, section_name, category, option)
+            if not success:
+                failed_changes.append(f"{section}.{category}.{option}")
+                continue
+            successful_changes.append(f"{section}.{category}.{option}")
+            # update local in-memory config
+            section_dict = self.config.get(section, {})
+            category_dict = section_dict.get(category)
+            if category_dict:
+                for it in category_dict["items"]:
+                    if it.get("name") == option:
+                        it["value"] = value
+                        break
+            # remove pending change only on success
+            self.pending_changes.pop((section, category, option), None)
 
-        if errors:
-            QMessageBox.critical(self, "Apply failed", "Some settings failed to apply:\n" + "\n".join(errors))
+        if failed_changes:
+            lines = []
+            for key, errmsg in errors.items():
+                lines.append(f"{key}: {errmsg}")
+            QMessageBox.warning(self, "Apply failed", "Failed to apply settings:\n\n" + "\n".join(lines))
         else:
-            QMessageBox.information(self, "Applied", "Settings applied successfully.")
-            # refresh UI to remove asterisks
-            current_item = self.tree.currentItem()
-            if current_item:
-                self.on_tree_item_clicked(current_item, 0)
+            QMessageBox.information(self, "Applied", "Settings applied successfully")
+
+        # refresh UI to remove asterisks
+        current_item = self.tree.currentItem()
+
+        if current_item:
+            self.on_tree_item_clicked(current_item, 0)
 
     def on_ok(self):
         """Apply and close if successful."""
