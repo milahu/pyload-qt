@@ -92,6 +92,7 @@ class PyLoadClient:
                 "restart_failed",
                 "delete_packages",
                 "add_package",
+                "set_config_value",
             )
             if name in post_methods:
                 # method = "post"
