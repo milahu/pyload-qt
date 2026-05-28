@@ -289,6 +289,7 @@ class PyLoadUI(QMainWindow):
         self.client = PyLoadClient()
         self.current_package = None
         self.init_ui()
+        self.config = {}
         self.login()
         self.refresh_interval = 5 # refresh every 5 seconds
         self.init_refresh_timer()
@@ -1202,17 +1203,30 @@ class PyLoadUI(QMainWindow):
         if isinstance(config, NetworkError):
             print("on_config error", config)
             return
+        self.config["core"] = config
         # print("on_config", json.dumps(config, indent=2))
-        self.config = config
+        if 0:
+            # debug
+            p = "pyload_config.json"
+            print(f"writing {p}")
+            with open(p, "w") as fp:
+                fp.write(json.dumps(config, indent=2) + "\n")
 
-    def get_config_value(self, scope, key):
-        scope_obj = self.config.get(scope)
-        if scope_obj is None: raise KeyError(scope)
-        for item in scope_obj["items"]:
-            if item["name"] == key:
+    def get_config_value(self, section, category, option):
+        section_obj = self.config.get(section)
+        if section_obj is None:
+            # section was not found in config
+            print(f"config: {self.config}")
+            raise KeyError(section)
+        category_obj = section_obj.get(category)
+        if category_obj is None:
+            # category was not found in section
+            raise KeyError(f"{section}.{category}")
+        for item in category_obj["items"]:
+            if item["name"] == option:
                 return item["value"]
-        # item was not found in scope
-        raise KeyError(f"{scope}.{key}")
+        # option was not found in category
+        raise KeyError(f"{section}.{category}.{option}")
 
     def init_refresh_timer(self):
         self.refresh_timer = timer = QTimer()
