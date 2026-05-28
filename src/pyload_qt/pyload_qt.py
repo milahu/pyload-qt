@@ -97,6 +97,7 @@ class PyLoadClient:
                 "add_package",
                 "set_config_value",
                 "set_config_values",
+                "set_package_data",
             )
             if name in post_methods:
                 # method = "post"
