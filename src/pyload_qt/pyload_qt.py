@@ -1137,8 +1137,9 @@ class PyLoadUI(QMainWindow):
         if dialog.exec() == QDialog.Accepted:
             name, links, password = dialog.get_package_data()
             if not name:
-                QMessageBox.warning(self, "Error", "Package name cannot be empty")
-                return
+                # local time with milliseconds and timezone
+                # https://stackoverflow.com/questions/7588511
+                name = datetime.datetime.now(datetime.datetime.now(datetime.timezone.utc).astimezone().tzinfo).isoformat(timespec='milliseconds')
             if not links:
                 QMessageBox.warning(self, "Error", "No valid links found")
                 return
