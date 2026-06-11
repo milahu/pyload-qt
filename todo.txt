@@ -24,3 +24,11 @@ https://github.com/pyload/pyload/pull/4602
 downloads table
 click on download -> reset all filters (status, name) and focus package in packages table
 doubleclick on download -> open download directory
+
+package -> links view
+show progress for each link
+
+packages table
+package -> rightclick -> copy -> name / path / urls
+
+package -> package view -> let user change the password
