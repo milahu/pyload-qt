@@ -32,3 +32,7 @@ packages table
 package -> rightclick -> copy -> name / path / urls
 
 package -> package view -> let user change the password
+
+package -> links view
+allow to enable/disable each link with a checkbox or via the context menu
+similar to the qBittorrent feature "set file priority: normal / dont download"
