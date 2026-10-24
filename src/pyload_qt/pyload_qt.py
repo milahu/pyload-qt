@@ -98,6 +98,9 @@ class PyLoadClient:
                 "set_config_value",
                 "set_config_values",
                 "set_package_data",
+                "unpause_server",
+                "pause_server",
+                "stop_all_downloads",
             )
             if name in post_methods or name.startswith("set_") or name.startswith("add_"):
                 # method = "post"
