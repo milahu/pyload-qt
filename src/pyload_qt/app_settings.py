@@ -565,7 +565,7 @@ class AppSettingsDialog(QDialog):
                 loop.quit()
 
         # send async request
-        self.client.set_config_values(on_set_config_values, config)
+        self.client.set_config_values(on_set_config_values, config=config)
 
         # wait for result or timeout
         # print("on_apply: waiting for result or timeout")
