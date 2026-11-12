@@ -101,6 +101,7 @@ class PyLoadClient:
                 "unpause_server",
                 "pause_server",
                 "stop_all_downloads",
+                "order_packages",
             )
             if name in post_methods or name.startswith("set_") or name.startswith("add_"):
                 # method = "post"
