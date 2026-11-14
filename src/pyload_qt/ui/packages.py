@@ -176,6 +176,12 @@ class PackagesMixin:
 
         table = self.packages_table
         table.clearContents()
+
+        # disable table sorting to insert data 10x faster
+        table.setSortingEnabled(False)
+        table.setUpdatesEnabled(False)
+
+        # FIXME move this to a "try" block
         self.packages_table.setRowCount(len(queue_data))
         for row, package in enumerate(queue_data):
             col = 0
@@ -228,6 +234,11 @@ class PackagesMixin:
             size_item = SortKeyTableWidgetItem(size_text, size)
             self.packages_table.setItem(row, col, size_item)
             col += 1
+
+        # FIXME move this to a "finally" block
+        # re-enable table sorting after all data was inserted
+        table.setSortingEnabled(True)
+        table.setUpdatesEnabled(True)
 
         if hasattr(self, "t1_refresh_queue"):
             # debug timings
