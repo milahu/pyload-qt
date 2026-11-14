@@ -20,7 +20,7 @@ from PySide6.QtCore import (
     Qt,
 )
 from typing import Optional
-from .statusfilterwidget import StatusFilterWidget
+from .status_filter_widget import StatusFilterWidget
 
 class ArrowCheckBox(QCheckBox):
     def __init__(self, text, parent=None):
