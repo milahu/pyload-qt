@@ -541,6 +541,13 @@ class PyLoadUI(QMainWindow):
 
         num_cols = 5
 
+        # the package ID is useful for debugging
+        self.packages_table_has_package_id_column = False
+        # self.packages_table_has_package_id_column = True
+
+        if self.packages_table_has_package_id_column:
+            num_cols += 1
+
         # workaround: table.setColumnWidth works only if we call table.setColumnCount before
         table.setColumnCount(num_cols)
 
@@ -553,6 +560,12 @@ class PyLoadUI(QMainWindow):
         table.setColumnWidth(col, 10) # Pos "12345"
         package_position_col = col
         col += 1
+
+        if self.packages_table_has_package_id_column:
+            # Package ID = "PID"
+            column_labels.append("ID")
+            table.setColumnWidth(col, 20)
+            col += 1
 
         # Package Name
         column_labels.append("Package")
@@ -1346,6 +1359,14 @@ class PyLoadUI(QMainWindow):
             position_item.setData(Qt.UserRole, package["pid"])  # Store package ID
             self.packages_table.setItem(row, col, position_item)
             col += 1
+
+            if self.packages_table_has_package_id_column:
+                # Package ID = "PID"
+                package_id = package["pid"] # package ID
+                package_id_text = str(package_id)
+                package_id_item = SortKeyTableWidgetItem(package_id_text, package_id)
+                self.packages_table.setItem(row, col, package_id_item)
+                col += 1
 
             # Name
             name_item = QTableWidgetItem(package["name"])
