@@ -537,31 +537,57 @@ class PyLoadUI(QMainWindow):
 
     def create_packages_table(self):
         table = QTableWidget()
-        column_labels = [
-            "Pos",
-            "Package",
-            "Status",
-            "Progress",
-            "Size",
-        ]
-        table.setColumnCount(len(column_labels))
-        table.setHorizontalHeaderLabels(column_labels)
-        # table.horizontalHeader().setSectionResizeMode(1, QHeaderView.Stretch)
+        column_labels = []
+
+        num_cols = 5
+
+        # workaround: table.setColumnWidth works only if we call table.setColumnCount before
+        table.setColumnCount(num_cols)
+
+        col = 0
+
+        # Position
+        column_labels.append("Pos")
         # default column width is 100
         # NOTE leave room for vertical scrollbar
-        table.setColumnWidth(0, 10) # Pos "12345"
-        table.setColumnWidth(1, 640) # Package
-        table.setColumnWidth(2, 150) # Status: "Active" | "Paused"
-        table.setColumnWidth(3, 70) # Progress "12.3%"
-        table.setColumnWidth(4, 90) # Size "1000.00 MiB"
+        table.setColumnWidth(col, 10) # Pos "12345"
+        package_position_col = col
+        col += 1
+
+        # Package Name
+        column_labels.append("Package")
+        table.setColumnWidth(col, 640)
+        col += 1
+
+        # Status: "Active" | "Paused"
+        column_labels.append("Status")
+        table.setColumnWidth(col, 150)
+        col += 1
+
+        # Progress "12.3%"
+        column_labels.append("Progress")
+        table.setColumnWidth(col, 70)
+        col += 1
+
+        # Size "1000.00 MiB"
+        column_labels.append("Size")
+        table.setColumnWidth(col, 90)
+        col += 1
+
+        # table.setColumnCount(len(column_labels))
+        assert len(column_labels) == num_cols
+        table.setHorizontalHeaderLabels(column_labels)
+        # table.horizontalHeader().setSectionResizeMode(1, QHeaderView.Stretch)
         table.setSelectionBehavior(QTableWidget.SelectRows)
         # table.setSelectionMode(QTableWidget.SingleSelection)
         table.itemSelectionChanged.connect(self.on_package_selected)
         table.itemDoubleClicked.connect(self.on_package_doubleclicked)
         table.setSortingEnabled(True)
         table.verticalHeader().setVisible(False)
-        table.horizontalHeaderItem(0).setToolTip("Position")
-        table.sortItems(0, Qt.AscendingOrder)
+        # "Pos" is short for "Position"
+        table.horizontalHeaderItem(package_position_col).setToolTip("Position")
+        # sort by package position
+        table.sortItems(package_position_col, Qt.AscendingOrder)
         table.setEditTriggers(QAbstractItemView.NoEditTriggers)
         # TODO filter by search expression (regex?)
         # TODO select multiple packages -> rightclick -> remove / ...
