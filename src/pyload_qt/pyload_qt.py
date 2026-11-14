@@ -2,6 +2,7 @@
 
 import os
 import sys
+import time
 import signal
 import json
 import re
@@ -1282,11 +1283,20 @@ class PyLoadUI(QMainWindow):
         return self.refresh_queue()
 
     def refresh_queue(self):
+        if 1:
+            # debug timings
+            self.t1_refresh_queue = time.time()
         self.client.get_queue_and_collector(self.on_queue_and_collector_received)
 
     def on_queue_and_collector_received(self, queue_data):
         # FIXME preserve the previous sort order
         # https://stackoverflow.com/questions/11826257
+        if hasattr(self, "t1_refresh_queue"):
+            # debug timings
+            t1 = self.t1_refresh_queue
+            t2 = time.time()
+            print(f"on_queue_and_collector_received: received data: dt={t2 - t1:.2f} N={len(queue_data)}")
+            t1 = time.time()
         self.debug_pid = None
         if self.debug_pid:
             for pkg in queue_data:
@@ -1344,6 +1354,11 @@ class PyLoadUI(QMainWindow):
             size_item = SortKeyTableWidgetItem(size_text, size)
             self.packages_table.setItem(row, col, size_item)
             col += 1
+
+        if hasattr(self, "t1_refresh_queue"):
+            # debug timings
+            t2 = time.time()
+            print(f"on_queue_and_collector_received: filled table: dt={t2 - t1:.2f} N={len(queue_data)}")
 
     def on_package_selected(self):
         selected_items = self.packages_table.selectedItems()
