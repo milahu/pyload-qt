@@ -110,6 +110,7 @@ class PyLoadClient:
             else:
                 # method = "get"
                 is_get = True
+            # print(f"func: name={name} is_get={is_get}")
             url = f"{self.base_url}/{os.path.join(api_dir, name)}"
             is_get_csrf_token = False
             is_login = False
@@ -141,6 +142,9 @@ class PyLoadClient:
                 request.setHeader(
                     QNetworkRequest.ContentTypeHeader, "application/x-www-form-urlencoded"
                 )
+                if 0:
+                    # debug
+                    print(f"PyLoadClient.{name}: url={url} post_data={post_data}")
                 reply = self.manager.post(request, post_data)
             def handle_reply():
                 if reply.error() == QNetworkReply.NoError:
