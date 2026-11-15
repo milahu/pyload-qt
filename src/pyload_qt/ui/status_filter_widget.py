@@ -22,6 +22,7 @@ class StatusFilterWidget(QListWidget):
         "Active",
         "Paused",
         "Complete",
+        "Incomplete",
         "Partial",
         "Empty",
     ]

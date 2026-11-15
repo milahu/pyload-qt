@@ -132,6 +132,15 @@ class PackagesMixin:
                 hidden = (package_progress < 1)
                 table.setRowHidden(row_idx, hidden)
             return
+        if status_name == "Incomplete":
+            for row_idx in range(table.rowCount()):
+                package_progress_item = table.item(row_idx, package_progress_col_idx)
+                if package_progress_item is None:
+                    continue
+                package_progress = package_progress_item.data(Qt.UserRole)
+                hidden = (package_progress == 1)
+                table.setRowHidden(row_idx, hidden)
+            return
         if status_name == "Partial":
             for row_idx in range(table.rowCount()):
                 package_progress_item = table.item(row_idx, package_progress_col_idx)
