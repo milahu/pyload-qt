@@ -17,6 +17,15 @@ class StatusFilterWidget(QListWidget):
     # Signals
     filterChanged = Signal(str)
 
+    _filter_names = [
+        "All",
+        "Active",
+        "Paused",
+        "Complete",
+        "Partial",
+        "Empty",
+    ]
+
     def __init__(self, parent=None, transfer_list=None):
         super().__init__(parent)
         self.transfer_list = transfer_list
@@ -35,35 +44,10 @@ class StatusFilterWidget(QListWidget):
 
     def _setup_filter_items(self):
         """Create all the filter items with their icons and text"""
-        # All
-        all_item = QListWidgetItem(self)
-        # all_item.setData(Qt.DisplayRole, self.tr("All (0)", "this is for the status filter"))
-        all_item.setData(Qt.DisplayRole, self.tr("All", "this is for the status filter"))
-        # all_item.setData(Qt.DecorationRole, UIThemeManager.instance().getIcon("filter-all", "filterall"))
-
-        # Active
-        active = QListWidgetItem(self)
-        # active.setData(Qt.DisplayRole, self.tr("Active (0)"))
-        active.setData(Qt.DisplayRole, self.tr("Active"))
-        # active.setData(Qt.DecorationRole, UIThemeManager.instance().getIcon("filter-active", "filteractive"))
-
-        # Paused
-        paused = QListWidgetItem(self)
-        # paused.setData(Qt.DisplayRole, self.tr("Paused (0)"))
-        paused.setData(Qt.DisplayRole, self.tr("Paused"))
-        # paused.setData(Qt.DecorationRole, UIThemeManager.instance().getIcon("paused", "media-playback-pause"))
-
-        # Complete
-        complete = QListWidgetItem(self)
-        complete.setData(Qt.DisplayRole, self.tr("Complete"))
-
-        # Partial
-        partial = QListWidgetItem(self)
-        partial.setData(Qt.DisplayRole, self.tr("Partial"))
-
-        # Empty
-        empty = QListWidgetItem(self)
-        empty.setData(Qt.DisplayRole, self.tr("Empty"))
+        for filter_name in self._filter_names:
+            item = QListWidgetItem(self)
+            # item.setData(Qt.DisplayRole, self.tr(f"{filter_name} (0)"))
+            item.setData(Qt.DisplayRole, self.tr(filter_name))
 
     def sizeHint(self):
         num_visible_items = 0
