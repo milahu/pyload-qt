@@ -50,7 +50,7 @@ class MainUIMixin:
     def init_ui(self):
         self.setWindowTitle("pyLoad")
         self.setGeometry(100, 100, 1280, 720)
-        self.setWindowIcon(QIcon(os.path.dirname(__file__) + "/pyload-logo.png"))
+        self.setWindowIcon(QIcon(os.path.dirname(__file__) + "/../pyload-logo.png"))
 
         # - root_widget: parent
         #   - sidebar_widget: sidebar
