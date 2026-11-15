@@ -2,10 +2,15 @@ from PySide6.QtCore import (
     Qt,
 )
 from PySide6.QtWidgets import (
+    QApplication,
+    QMenu,
     QTableWidget,
     QTableWidgetItem,
     QHeaderView,
     QAbstractItemView,
+)
+from PySide6.QtGui import (
+    QClipboard,
 )
 
 from .sort_key_table_widget_item import SortKeyTableWidgetItem
