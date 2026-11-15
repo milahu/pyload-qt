@@ -15,7 +15,7 @@ from PySide6.QtGui import QCursor
 
 class StatusFilterWidget(QListWidget):
     # Signals
-    filterChanged = Signal(int)
+    filterChanged = Signal(str)
 
     def __init__(self, parent=None, transfer_list=None):
         super().__init__(parent)
@@ -149,7 +149,12 @@ class StatusFilterWidget(QListWidget):
         if self.transfer_list:
             # self.transfer_list.applyStatusFilter(row)
             pass
-        self.filterChanged.emit(row)
+        row_text = self.item(row).text()
+        # remove the counter suffix
+        # a: "Active (123)"
+        # b: "Active"
+        row_text = row_text.split(" (")[0]
+        self.filterChanged.emit(row_text)
 
     def configure(self):
         for i in range(self.count()):

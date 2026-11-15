@@ -91,41 +91,66 @@ class PackagesMixin:
         table.customContextMenuRequested.connect(self.show_packages_context_menu)
         return table
 
-    def packages_table_set_status_filter(self, status_id):
+    def packages_table_set_status_filter(self, status_name: str):
         table = self.packages_table
-        max_status_id = 5
-        if not (0 <= status_id <= max_status_id):
-            raise ValueError(f"bad status_id {status_id}")
+        # FIXME use filters from status_filter_widget
         # FIXME this conflicts with on_package_filter_change
-        if status_id == 0: # all
+        # NOTE we use unswitched loops for better performance
+        package_queue_col_idx = 2 # Status: Queue or Collector
+        package_progress_col_idx = 3 # Progress
+        if status_name == "All":
             for row_idx in range(table.rowCount()):
                 table.setRowHidden(row_idx, False)
-        else:
+            return
+        if status_name == "Active":
             for row_idx in range(table.rowCount()):
-                package_queue_col_idx = 2 # Status: Queue or Collector
-                package_progress_col_idx = 3 # Progress
-                hidden = False
-                if status_id in (1, 2):
-                    package_queue_item = table.item(row_idx, package_queue_col_idx)
-                    if package_queue_item is None:
-                        continue
-                    package_queue = package_queue_item.data(Qt.UserRole)
-                    if status_id == 1: # active aka "pyload queue"
-                        hidden = not(package_queue)
-                    elif status_id == 2: # paused aka "pyload collector"
-                        hidden = package_queue
-                if status_id in (3, 4, 5):
-                    package_progress_item = table.item(row_idx, package_progress_col_idx)
-                    if package_progress_item is None:
-                        continue
-                    package_progress = package_progress_item.data(Qt.UserRole)
-                    if status_id == 3: # complete
-                        hidden = (package_progress < 1)
-                    elif status_id == 4: # partial
-                        hidden = (package_progress in (0, 1))
-                    elif status_id == 5: # empty
-                        hidden = (package_progress > 0)
+                package_queue_item = table.item(row_idx, package_queue_col_idx)
+                if package_queue_item is None:
+                    # TODO continue or break
+                    # if the first row does not have this column
+                    # then all other rows also dont have this column?
+                    continue
+                package_queue = package_queue_item.data(Qt.UserRole)
+                hidden = (package_queue == 0)
                 table.setRowHidden(row_idx, hidden)
+            return
+        if status_name == "Paused":
+            for row_idx in range(table.rowCount()):
+                package_queue_item = table.item(row_idx, package_queue_col_idx)
+                if package_queue_item is None:
+                    continue
+                package_queue = package_queue_item.data(Qt.UserRole)
+                hidden = (package_queue == 1)
+                table.setRowHidden(row_idx, hidden)
+            return
+        if status_name == "Complete":
+            for row_idx in range(table.rowCount()):
+                package_progress_item = table.item(row_idx, package_progress_col_idx)
+                if package_progress_item is None:
+                    continue
+                package_progress = package_progress_item.data(Qt.UserRole)
+                hidden = (package_progress < 1)
+                table.setRowHidden(row_idx, hidden)
+            return
+        if status_name == "Partial":
+            for row_idx in range(table.rowCount()):
+                package_progress_item = table.item(row_idx, package_progress_col_idx)
+                if package_progress_item is None:
+                    continue
+                package_progress = package_progress_item.data(Qt.UserRole)
+                hidden = (package_progress in (0, 1))
+                table.setRowHidden(row_idx, hidden)
+            return
+        if status_name == "Empty":
+            for row_idx in range(table.rowCount()):
+                package_progress_item = table.item(row_idx, package_progress_col_idx)
+                if package_progress_item is None:
+                    continue
+                package_progress = package_progress_item.data(Qt.UserRole)
+                hidden = (package_progress > 0)
+                table.setRowHidden(row_idx, hidden)
+            return
+        raise ValueError(f"bad status_name {status_name!r}")
 
     def on_package_filter_change(self):
         filter_text = self.package_filter_input.text().strip()
