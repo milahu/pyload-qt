@@ -141,6 +141,16 @@ class MainUIMixin:
         quit_action.triggered.connect(self.close)
         quit_action.setShortcut(QKeySequence.Quit) # shortcut: Ctrl+Q
 
+        if 1:
+            # TODO rename to "Backend"?
+            menu = self.menu.addMenu("Server")
+
+            action = menu.addAction("Restart Server")
+            action.triggered.connect(self.restart_server)
+
+            action = menu.addAction("Kill Server")
+            action.triggered.connect(self.kill_server)
+
     def create_toolbar(self):
         self.toolbar = self.addToolBar("Tools")
 
@@ -289,3 +299,15 @@ class MainUIMixin:
             self.refresh_queue()
         else:
             QMessageBox.warning(self, "Error", "Failed to add package")
+
+    def restart_server(self):
+        self.client.restart(self.on_server_restarted)
+
+    def on_server_restarted(self, result):
+        print(f"on_server_restarted: result={result}")
+
+    def kill_server(self):
+        self.client.kill(self.on_server_killed)
+
+    def on_server_killed(self, result):
+        print(f"on_server_killed: result={result}")
