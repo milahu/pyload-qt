@@ -119,15 +119,18 @@ class LinksMixin:
         menu = QMenu()
         copy_action = menu.addAction("Copy Links")
         remove_action = menu.addAction("Remove Links")
-        restart_action = menu.addAction("Restart Failed Links")
+        restart_failed_action = menu.addAction("Restart Failed Links")
+        restart_all_action = menu.addAction("Restart All Links")
         action = menu.exec(self.package_links_table.viewport().mapToGlobal(position))
 
         if action == copy_action:
             self.copy_selected_links()
         elif action == remove_action:
             self.remove_selected_links()
-        elif action == restart_action:
-            self.restart_selected_links()
+        elif action == restart_failed_action:
+            self.restart_failed_selected_links()
+        elif action == restart_all_action:
+            self.restart_all_selected_links()
 
     def copy_selected_links(self):
         table = self.package_links_table
@@ -200,13 +203,29 @@ class LinksMixin:
         else:
             QMessageBox.warning(self, "Error", f"Failed to remove links: {result}")
 
-    def restart_selected_links(self):
+    def restart_failed_selected_links(self):
         link_ids = self.get_selected_package_link_ids()
         if not link_ids:
             return
         # note: only restart *failed* links
         # -> dont lose finished links
-        self.client.restart_failed(self.on_links_restarted, link_ids=link_ids)
+        # TODO rename pyload API method: restart_failed -> restart_failed_links
+        self.client.restart_failed(self.on_failed_links_restarted, link_ids=link_ids)
 
-    def on_links_restarted(self, response):
-        print(f"on_links_restarted: {response}")
+    def on_failed_links_restarted(self, response):
+        print(f"on_failed_links_restarted: {response}")
+
+    def restart_all_selected_links(self):
+        link_ids = self.get_selected_package_link_ids()
+        if not link_ids:
+            return
+        # note: restart *all* links
+        # -> lose finished links
+        # restart_files is deprecated in favor of restart_links.
+        # "Links" are remote files, maybe downloaded.
+        # "Files" are local files, already downloaded.
+        # self.client.restart_files(self.on_all_links_restarted, file_ids=link_ids)
+        self.client.restart_links(self.on_all_links_restarted, link_ids=link_ids)
+
+    def on_all_links_restarted(self, response):
+        print(f"on_all_links_restarted: {response}")

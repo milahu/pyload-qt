@@ -56,6 +56,8 @@ class PyLoadClient:
                 "push_to_queue",
                 "pull_from_queue",
                 "restart_failed",
+                "restart_links",
+                "restart_packages",
                 "delete_packages",
                 "add_package",
                 "set_config_value",
