@@ -9,6 +9,7 @@ from PySide6.QtWidgets import (
     QTableWidget,
     QTableWidgetItem,
     QHeaderView,
+    QMessageBox,
     QAbstractItemView,
 )
 from PySide6.QtGui import (
